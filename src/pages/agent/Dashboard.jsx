@@ -1,0 +1,290 @@
+import React, { useState } from 'react';
+import {
+  Inbox,
+  CheckCircle,
+  XCircle,
+  Clock,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  RefreshCw,
+  AlertCircle,
+  Phone,
+  User,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import Layout from '../../components/Layout';
+import StatusBadge from '../../components/StatusBadge';
+import { useAgentTransactions, useTransactionActions } from '../../hooks/useTransactions';
+import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
+import { OPERATORS } from '../../utils/constants';
+
+function OrderCard({ transaction, onAccept, onComplete, onCancel }) {
+  const [expanded, setExpanded] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [showCancelInput, setShowCancelInput] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const isDeposit = transaction.type === 'deposit';
+  const operator = OPERATORS.find((op) => op.id === transaction.operator);
+
+  const handleAccept = async () => {
+    setLoading(true);
+    await onAccept(transaction.id);
+    setLoading(false);
+  };
+
+  const handleComplete = async () => {
+    setLoading(true);
+    await onComplete(transaction.id);
+    setLoading(false);
+  };
+
+  const handleCancel = async () => {
+    if (!cancelReason.trim()) return;
+    setLoading(true);
+    await onCancel(transaction.id, cancelReason);
+    setLoading(false);
+  };
+
+  return (
+    <div className="card border border-gray-700 hover:border-gray-600 transition-all">
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+          ${isDeposit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+          {isDeposit
+            ? <ArrowDownCircle className="w-5 h-5 text-green-400" />
+            : <ArrowUpCircle className="w-5 h-5 text-red-400" />
+          }
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-white text-sm">
+              {isDeposit ? 'Dépôt' : 'Retrait'}
+            </span>
+            <span className="text-gray-500 text-xs">{formatTxId(transaction.id)}</span>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-primary-400 font-bold">{formatCFA(transaction.amount)}</span>
+            {operator && <span className="text-gray-500 text-xs">• {operator.logo} {operator.name}</span>}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <StatusBadge status={transaction.status} />
+          {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-gray-800 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+              <p className="text-gray-500 text-xs mb-1">Client</p>
+              <div className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-white text-sm font-medium truncate">
+                  {transaction.clientName || 'Inconnu'}
+                </span>
+              </div>
+            </div>
+            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+              <p className="text-gray-500 text-xs mb-1">Téléphone</p>
+              <div className="flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-white text-sm font-medium">
+                  +226 {transaction.phone}
+                </span>
+              </div>
+            </div>
+            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+              <p className="text-gray-500 text-xs mb-1">Date</p>
+              <span className="text-white text-sm">
+                {formatDate(transaction.createdAt)}
+              </span>
+            </div>
+            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+              <p className="text-gray-500 text-xs mb-1">Opérateur</p>
+              <span className="text-white text-sm">
+                {operator?.logo} {operator?.name}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          {transaction.status === 'pending' && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleAccept}
+                disabled={loading}
+                className="btn-primary flex-1"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
+                  <><CheckCircle className="w-4 h-4" /> Accepter</>
+                )}
+              </button>
+              <button
+                onClick={() => setShowCancelInput(!showCancelInput)}
+                className="btn-danger flex-1"
+              >
+                <XCircle className="w-4 h-4" /> Annuler
+              </button>
+            </div>
+          )}
+
+          {transaction.status === 'processing' && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleComplete}
+                disabled={loading}
+                className="btn-primary flex-1"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
+                  <><CheckCircle className="w-4 h-4" /> Marquer terminé</>
+                )}
+              </button>
+              <button
+                onClick={() => setShowCancelInput(!showCancelInput)}
+                className="btn-danger flex-1"
+              >
+                <XCircle className="w-4 h-4" /> Annuler
+              </button>
+            </div>
+          )}
+
+          {/* Cancel input */}
+          {showCancelInput && (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Raison de l'annulation..."
+                className="input-field text-sm"
+              />
+              <button
+                onClick={handleCancel}
+                disabled={!cancelReason.trim() || loading}
+                className="btn-danger w-full text-sm"
+              >
+                Confirmer l'annulation
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AgentDashboard() {
+  const { transactions, loading } = useAgentTransactions();
+  const { acceptOrder, completeOrder, cancelOrder } = useTransactionActions();
+  const [activeTab, setActiveTab] = useState('all');
+
+  const pending = transactions.filter((t) => t.status === 'pending');
+  const processing = transactions.filter((t) => t.status === 'processing');
+
+  const displayed = activeTab === 'pending' ? pending
+    : activeTab === 'processing' ? processing
+    : transactions;
+
+  return (
+    <Layout>
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="page-title">Tableau de bord Agent</h1>
+          <p className="text-gray-400 text-sm mt-1">Gérez les demandes des clients</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="card">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">En attente</p>
+                <p className="text-2xl font-bold text-white">{pending.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                <RefreshCw className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">En cours</p>
+                <p className="text-2xl font-bold text-white">{processing.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-gray-900 rounded-xl p-1 border border-gray-800">
+          {[
+            { key: 'all', label: `Tout (${transactions.length})` },
+            { key: 'pending', label: `Attente (${pending.length})` },
+            { key: 'processing', label: `En cours (${processing.length})` },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200
+                ${activeTab === tab.key
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-400 hover:text-white'
+                }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Orders */}
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-800 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-800 rounded w-32 mb-2" />
+                    <div className="h-3 bg-gray-800 rounded w-24" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : displayed.length === 0 ? (
+          <div className="card text-center py-12">
+            <Inbox className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+            <p className="text-gray-400 font-medium">Aucune commande</p>
+            <p className="text-gray-600 text-sm mt-1">Les nouvelles commandes apparaîtront ici</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {displayed.map((tx) => (
+              <OrderCard
+                key={tx.id}
+                transaction={tx}
+                onAccept={acceptOrder}
+                onComplete={completeOrder}
+                onCancel={cancelOrder}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}
