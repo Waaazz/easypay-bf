@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { useTransactionActions, getAvailableAgent } from '../../hooks/useTransactions';
+import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
 import {
   AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER, DEPOSIT_SESSION_MINUTES,
 } from '../../utils/constants';
@@ -130,14 +130,26 @@ export default function Deposit() {
   const platformLabel = platform.toUpperCase();
 
   const [step, setStep] = useState(S.ACCOUNT_ID);
-  const [accountId, setAccountId]         = useState('');
-  const [operator, setOperator]           = useState(null);
-  const [clientPhone, setClientPhone]     = useState('');
-  const [txId, setTxId]                   = useState('');
-  const [error, setError]                 = useState('');
-  const [confirming, setConfirming]       = useState(false);
-  const [cancelled, setCancelled]         = useState(false);
-  const [assignedAgentNumber, setAssignedAgentNumber] = useState(''); // numéro spécifique de l'agent assigné
+  const [accountId, setAccountId]     = useState('');
+  const [operator, setOperator]       = useState(null);
+  const [clientPhone, setClientPhone] = useState('');
+  const [txId, setTxId]               = useState('');
+  const [error, setError]             = useState('');
+  const [confirming, setConfirming]   = useState(false);
+  const [cancelled, setCancelled]     = useState(false);
+  // Numéros actifs chargés depuis /config/activeNumbers (document public Firestore)
+  // Structure : { orange: { number, agentId, agentName }, telmob: {...}, telecel: {...} }
+  const [activeNumbers, setActiveNumbers] = useState(null);
+  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [assignedAgentNumber, setAssignedAgentNumber] = useState('');
+  const [selectedAgentConfig, setSelectedAgentConfig] = useState(null);
+
+  useEffect(() => {
+    getActiveNumbers().then(data => {
+      setActiveNumbers(data);
+      setLoadingAgents(false);
+    });
+  }, []);
 
   // ── Étape 0 : ID de compte ───────────────────────────────────────────────
   if (step === S.ACCOUNT_ID) {
@@ -190,6 +202,16 @@ export default function Deposit() {
 
   // ── Étape 1 : Choix de l'opérateur ──────────────────────────────────────
   if (step === S.CHOOSE_OP) {
+    const handleSelectOp = (op) => {
+      const raw = activeNumbers?.[op.id];
+      const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+      // Tire un agent au hasard parmi les actifs pour équilibrer la charge
+      const picked = list.length > 0 ? list[Math.floor(Math.random() * list.length)] : null;
+      setOperator(op);
+      setSelectedAgentConfig(picked);
+      setStep(S.CLIENT_PHONE);
+    };
+
     return (
       <div className="min-h-screen bg-gray-50">
         <Header title="Choisir l'opérateur" onBack={() => setStep(S.ACCOUNT_ID)} />
@@ -197,20 +219,33 @@ export default function Deposit() {
           <ProgressBar step={S.CHOOSE_OP} />
           <div>
             <p className="text-base font-semibold text-gray-800 mb-1">Avec quel mobile money allez-vous payer ?</p>
-            <p className="text-sm text-gray-500 mb-4">Choisissez votre opérateur pour voir le numéro correspondant.</p>
+            <p className="text-sm text-gray-500 mb-4">Choisissez votre opérateur pour voir le numéro de dépôt.</p>
             <div className="space-y-3">
-              {AGENT_NUMBERS.map(op => (
-                <button key={op.id} onClick={() => { setOperator(op); setStep(S.CLIENT_PHONE); }}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left
-                    ${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98]`}>
-                  <span className="text-2xl">{op.logo}</span>
-                  <div>
-                    <p className={`font-bold text-base ${op.text}`}>{op.name}</p>
-                    <p className="text-gray-500 text-sm">Numéro de dépôt : {op.number}</p>
-                  </div>
-                  <ArrowRight className={`w-5 h-5 ml-auto ${op.text}`} />
-                </button>
-              ))}
+              {AGENT_NUMBERS.map(op => {
+                const raw = activeNumbers?.[op.id];
+                const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+                const displayNum = list.length > 0 ? list[0].number : op.number;
+                return (
+                  <button key={op.id} onClick={() => handleSelectOp(op)}
+                    disabled={loadingAgents}
+                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left
+                      ${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98] disabled:opacity-60`}>
+                    <span className="text-2xl">{op.logo}</span>
+                    <div className="flex-1">
+                      <p className={`font-bold text-base ${op.text}`}>{op.name}</p>
+                      {loadingAgents
+                        ? <p className="text-gray-400 text-sm flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Chargement...
+                          </p>
+                        : <p className="text-gray-500 text-sm">
+                            Numéro de dépôt : <span className="font-semibold text-gray-800">{displayNum}</span>
+                          </p>
+                      }
+                    </div>
+                    <ArrowRight className={`w-5 h-5 ml-auto ${op.text}`} />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -225,10 +260,8 @@ export default function Deposit() {
       if (phone.length < 8) { setError('Veuillez entrer un numéro valide (8 chiffres).'); return; }
       setError('');
 
-      // Sélectionne l'agent le moins chargé ; si aucun n'a de numéro configuré,
-      // la transaction reste non-assignée (tous les agents la voient).
-      const agent = await getAvailableAgent(operator.id);
-      const agentNumber = agent ? agent.operators[operator.id] : (operator.raw || operator.number);
+      // Config chargée au choix de l'opérateur depuis /config/activeNumbers
+      const agentNumber = selectedAgentConfig?.number || operator.raw || operator.number;
 
       const result = await createTransaction({
         type: 'deposit',
@@ -237,7 +270,7 @@ export default function Deposit() {
         accountId: accountId.trim(),
         operator: operator.id,
         clientPhone: phone,
-        assignedAgentId: agent?.uid || null,
+        assignedAgentId: selectedAgentConfig?.agentId || null,
         agentOperatorNumber: agentNumber,
       });
       if (result.success) {

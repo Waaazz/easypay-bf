@@ -18,6 +18,8 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  // Empêche le re-login anonyme automatique pendant une connexion intentionnelle
+  const signingIn = React.useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -31,10 +33,14 @@ export function AuthProvider({ children }) {
         }
         setLoading(false);
       } else {
+        // Si une connexion est en cours, ne pas relancer signInAnonymously
+        if (signingIn.current) {
+          setLoading(false);
+          return;
+        }
         // Pas d'utilisateur → connexion anonyme automatique pour persister l'historique
         try {
           await signInAnonymously(auth);
-          // onAuthStateChanged se relancera avec l'utilisateur anonyme
         } catch (err) {
           console.error('Error signing in anonymously:', err);
           setLoading(false);
@@ -149,10 +155,13 @@ export function AuthProvider({ children }) {
 
   const loginAgent = async (phone, password) => {
     const email = phoneToEmail(phone);
+    signingIn.current = true;
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      signingIn.current = false;
       return { success: true };
     } catch {
+      signingIn.current = false;
       return { success: false, error: 'Numéro ou mot de passe incorrect.' };
     }
   };
@@ -197,6 +206,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Laisse le re-login anonyme se faire normalement après déconnexion
+    signingIn.current = false;
     try {
       await signOut(auth);
     } catch (error) {

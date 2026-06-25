@@ -30,9 +30,9 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
         <Icon className="w-6 h-6" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-gray-500 text-xs">{label}</p>
-        <p className="text-white font-bold text-xl mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-gray-600 text-xs mt-1">{sub}</p>}
+        <p className="text-gray-500 text-xs font-medium">{label}</p>
+        <p className="text-gray-900 font-bold text-2xl mt-1 truncate">{value}</p>
+        {sub && <p className="text-gray-400 text-xs mt-1">{sub}</p>}
       </div>
     </div>
   );
@@ -41,12 +41,12 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 shadow-xl">
-        <p className="text-gray-400 text-xs mb-2">{label}</p>
+      <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-lg">
+        <p className="text-gray-500 text-xs mb-2">{label}</p>
         {payload.map((p) => (
           <div key={p.name} className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-            <span className="text-white text-sm font-medium">{formatCFA(p.value)}</span>
+            <span className="text-gray-900 text-sm font-semibold">{formatCFA(p.value)}</span>
           </div>
         ))}
       </div>
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="page-title">Administration</h1>
-          <p className="text-gray-400 text-sm mt-1">Vue d'ensemble de la plateforme</p>
+          <p className="text-gray-500 text-sm mt-1">Vue d'ensemble de la plateforme</p>
         </div>
 
         {/* Stats grid */}
@@ -160,11 +160,11 @@ export default function AdminDashboard() {
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+                <Legend wrapperStyle={{ color: '#374151', fontSize: 12 }} />
                 <Bar dataKey="Dépôts" fill="#16a34a" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Retraits" fill="#ef4444" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -193,26 +193,26 @@ export default function AdminDashboard() {
               ))
             ) : (
               transactions.slice(0, 5).map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center
-                    ${tx.type === 'deposit' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                <div key={tx.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                    ${tx.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`}>
                     {tx.type === 'deposit'
-                      ? <ArrowDownCircle className="w-4 h-4 text-green-400" />
-                      : <ArrowUpCircle className="w-4 h-4 text-red-400" />
+                      ? <ArrowDownCircle className="w-4 h-4 text-green-600" />
+                      : <ArrowUpCircle className="w-4 h-4 text-red-600" />
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
+                    <p className="text-gray-800 text-sm font-medium truncate">
                       {tx.clientName || 'Client'} — {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
                     </p>
-                    <p className="text-gray-500 text-xs">{formatCFA(tx.amount)}</p>
+                    <p className="text-gray-500 text-xs font-semibold">{formatCFA(tx.amount)}</p>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full
-                    ${tx.status === 'completed'             ? 'text-green-400 bg-green-400/10'
-                    : tx.status === 'pending'               ? 'text-yellow-400 bg-yellow-400/10'
-                    : tx.status === 'awaiting_confirmation' ? 'text-purple-400 bg-purple-400/10'
-                    : tx.status === 'processing'            ? 'text-blue-400 bg-blue-400/10'
-                    : 'text-red-400 bg-red-400/10'}`}>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0
+                    ${tx.status === 'completed'             ? 'text-green-700 bg-green-100'
+                    : tx.status === 'pending'               ? 'text-yellow-700 bg-yellow-100'
+                    : tx.status === 'awaiting_confirmation' ? 'text-purple-700 bg-purple-100'
+                    : tx.status === 'processing'            ? 'text-blue-700 bg-blue-100'
+                    : 'text-red-700 bg-red-100'}`}>
                     {tx.status === 'completed'             ? 'Terminé'
                       : tx.status === 'pending'               ? 'Attente'
                       : tx.status === 'awaiting_confirmation' ? 'Paiement envoyé'

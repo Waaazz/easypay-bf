@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Inbox, CheckCircle, XCircle, Clock,
   ArrowDownCircle, ArrowUpCircle, RefreshCw,
   AlertCircle, Phone, User, ChevronDown, ChevronUp,
+  Wifi, WifiOff,
 } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
-import { useAgentTransactions, useTransactionActions } from '../../hooks/useTransactions';
+import { useAgentTransactions, useTransactionActions, setAgentAvailability } from '../../hooks/useTransactions';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
@@ -187,6 +190,44 @@ export default function AgentDashboard() {
 
   const agentName = userProfile?.name || 'Agent';
 
+  // ── Disponibilité en temps réel ────────────────────────────────────────────
+  const [isAvailable, setIsAvailable]           = useState(false);
+  const [toggling, setToggling]                 = useState(false);
+  const [availabilityError, setAvailabilityError] = useState('');
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    const unsub = onSnapshot(doc(db, 'config', 'activeNumbers'), (snap) => {
+      if (!snap.exists()) { setIsAvailable(false); return; }
+      const config = snap.data();
+      const ops = userProfile.operators || {};
+      const active = Object.keys(ops).some(opId => {
+        const raw = config[opId];
+        const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        return list.some(a => a.agentId === userProfile.uid);
+      });
+      setIsAvailable(active);
+    });
+    return () => unsub();
+  }, [userProfile?.uid, userProfile?.operators]);
+
+  const handleToggleAvailability = async () => {
+    if (!userProfile) return;
+    const ops = userProfile.operators || {};
+    if (Object.keys(ops).length === 0) {
+      setAvailabilityError('Aucun numéro opérateur configuré. Contactez l\'administrateur.');
+      return;
+    }
+    setToggling(true);
+    setAvailabilityError('');
+    try {
+      await setAgentAvailability(userProfile.uid, agentName, ops, !isAvailable);
+    } catch (e) {
+      setAvailabilityError(e.message || 'Erreur de mise à jour.');
+    }
+    setToggling(false);
+  };
+
   const pending    = transactions.filter(t => t.status === 'pending' || t.status === 'awaiting_confirmation');
   const processing = transactions.filter(t => t.status === 'processing');
 
@@ -202,6 +243,55 @@ export default function AgentDashboard() {
           <p className="text-gray-400 text-sm mt-1">
             Bonjour <span className="text-white font-medium">{agentName}</span>
           </p>
+        </div>
+
+        {/* ── Toggle disponibilité ─────────────────────────────────────── */}
+        <div className={`rounded-2xl p-4 border-2 transition-all duration-300
+          ${isAvailable
+            ? 'bg-green-500/10 border-green-500/30'
+            : 'bg-gray-800/50 border-gray-700'
+          }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isAvailable ? 'bg-green-500/20' : 'bg-gray-700'}`}>
+                {isAvailable
+                  ? <Wifi className="w-5 h-5 text-green-400" />
+                  : <WifiOff className="w-5 h-5 text-gray-500" />
+                }
+              </div>
+              <div>
+                <p className={`font-semibold text-sm ${isAvailable ? 'text-green-400' : 'text-gray-300'}`}>
+                  {isAvailable ? 'Disponible pour les dépôts' : 'Indisponible'}
+                </p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  {isAvailable
+                    ? 'Les clients peuvent vous être assignés'
+                    : 'Activez pour commencer à recevoir des dépôts'
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle switch */}
+            <button
+              onClick={handleToggleAvailability}
+              disabled={toggling}
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0 disabled:opacity-60
+                ${isAvailable ? 'bg-green-500' : 'bg-gray-600'}`}>
+              {toggling
+                ? <RefreshCw className="w-4 h-4 text-white animate-spin absolute inset-0 m-auto" />
+                : <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300
+                    ${isAvailable ? 'left-7' : 'left-0.5'}`} />
+              }
+            </button>
+          </div>
+
+          {availabilityError && (
+            <p className="text-red-400 text-xs mt-2 bg-red-400/10 px-3 py-1.5 rounded-lg">
+              {availabilityError}
+            </p>
+          )}
         </div>
 
         {/* Stats */}

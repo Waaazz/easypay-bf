@@ -6,6 +6,7 @@ import {
   ArrowUpCircle, ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { setAgentAvailability } from '../hooks/useTransactions';
 
 function NavLink({ to, icon: Icon, label, onClick, exact }) {
   const location = useLocation();
@@ -55,8 +56,17 @@ export default function Navbar() {
   const displayPhone = userProfile?.phone || '';
 
   const handleLogout = async () => {
+    // Si c'est un agent : le retirer des actifs avant de déconnecter
+    if (role === 'agent' && userProfile) {
+      const ops = userProfile.operators || {};
+      if (Object.keys(ops).length > 0) {
+        try {
+          await setAgentAvailability(userProfile.uid, userProfile.name || 'Agent', ops, false);
+        } catch (_) {}
+      }
+    }
     await logout();
-    navigate('/');
+    navigate(role === 'agent' ? '/agent/login' : '/');
   };
 
   // ── Liens par rôle ────────────────────────────────────────────────────────

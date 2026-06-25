@@ -5,17 +5,20 @@ import {
   where,
   onSnapshot,
   doc,
+  getDoc,
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
   Users, UserCheck, UserX, Shield, Phone,
-  RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil,
+  RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil, Zap,
+  ArrowDownCircle, ArrowUpCircle, TrendingUp,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatCFA } from '../../utils/formatters';
+import { setActiveAgent } from '../../hooks/useTransactions';
 
 const OPERATOR_LABELS = {
   orange:  { emoji: '🟠', name: 'Orange Money' },
@@ -23,9 +26,12 @@ const OPERATOR_LABELS = {
   telecel: { emoji: '🔴', name: 'Telecel' },
 };
 
+const RANK_MEDAL = ['🥇', '🥈', '🥉'];
+
 // ─── Carte agent ─────────────────────────────────────────────────────────────
-function AgentCard({ agent, onToggle, onEdit }) {
-  const [loading, setLoading] = useState(false);
+function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, rank }) {
+  const [loading, setLoading]     = useState(false);
+  const [activating, setActivating] = useState(null); // operatorId en cours
 
   const handleToggle = async () => {
     setLoading(true);
@@ -33,29 +39,40 @@ function AgentCard({ agent, onToggle, onEdit }) {
     setLoading(false);
   };
 
+  const [activateError, setActivateError] = useState('');
+
+  const handleActivate = async (opId, number) => {
+    setActivating(opId);
+    setActivateError('');
+    try {
+      await onActivate(opId, agent.uid, agent.name || 'Agent', number);
+    } catch (e) {
+      setActivateError(e.message || 'Erreur lors de l\'activation');
+    }
+    setActivating(null);
+  };
+
   const operatorEntries = Object.entries(agent.operators || {}).filter(([, v]) => v);
   const missingOperators = operatorEntries.length === 0;
 
   return (
     <div className="card hover:border-gray-700 transition-all">
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
+      <div className="flex items-start gap-4">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
           ${agent.active ? 'bg-primary-500/10' : 'bg-gray-800'}`}>
           <Shield className={`w-6 h-6 ${agent.active ? 'text-primary-400' : 'text-gray-500'}`} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-white font-semibold truncate">{agent.name || 'Agent'}</span>
-            {agent.active ? (
-              <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/20">
-                Actif
-              </span>
-            ) : (
-              <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
-                Inactif
-              </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {rank <= 3 && (
+              <span className="text-base" title={`#${rank} au classement`}>{RANK_MEDAL[rank - 1]}</span>
             )}
+            <span className="text-white font-semibold">{agent.name || 'Agent'}</span>
+            {agent.active
+              ? <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/20">Actif</span>
+              : <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">Inactif</span>
+            }
           </div>
 
           <div className="flex items-center gap-2 mt-1">
@@ -63,46 +80,96 @@ function AgentCard({ agent, onToggle, onEdit }) {
             <span className="text-gray-400 text-sm">{agent.phone}</span>
           </div>
 
-          {/* Numéros opérateurs */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-            {operatorEntries.map(([op, num]) => (
-              <span key={op} className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full">
-                {OPERATOR_LABELS[op]?.emoji} {num}
-              </span>
-            ))}
-            {missingOperators && (
-              <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                ⚠ Numéros non configurés
-              </span>
+          {/* Numéros opérateurs + bouton Activer */}
+          <div className="mt-2 space-y-1.5">
+            {missingOperators ? (
+              <button onClick={() => onEdit(agent)}
+                className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20 flex items-center gap-1">
+                <Pencil className="w-3 h-3" /> Ajouter les numéros Mobile Money
+              </button>
+            ) : (
+              operatorEntries.map(([opId, number]) => {
+                const raw = activeConfig?.[opId];
+                const activeList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+                const isCurrentlyActive = activeList.some(a => a.agentId === agent.uid);
+                return (
+                  <div key={opId} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-lg">
+                      {OPERATOR_LABELS[opId]?.emoji} {number}
+                    </span>
+                    <button
+                      onClick={() => handleActivate(opId, number)}
+                      disabled={activating === opId}
+                      className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all
+                        ${isCurrentlyActive
+                          ? 'text-green-400 bg-green-400/10 hover:bg-red-400/10 hover:text-red-400 border-green-400/20 hover:border-red-400/20'
+                          : 'text-primary-400 bg-primary-400/10 hover:bg-primary-400/20 border-primary-400/20'
+                        }`}>
+                      {activating === opId
+                        ? <RefreshCw className="w-3 h-3 animate-spin" />
+                        : isCurrentlyActive
+                          ? <><Zap className="w-3 h-3" /> Actif · Désactiver</>
+                          : <><Zap className="w-3 h-3" /> Activer</>
+                      }
+                    </button>
+                    {activeList.length > 1 && (
+                      <span className="text-xs text-gray-500">{activeList.length} agents</span>
+                    )}
+                  </div>
+                );
+              })
             )}
-            <button
-              onClick={() => onEdit(agent)}
-              className="text-xs text-gray-500 hover:text-primary-400 flex items-center gap-1 transition-colors"
-            >
-              <Pencil className="w-3 h-3" />
-              {missingOperators ? 'Ajouter numéros' : 'Modifier'}
-            </button>
           </div>
 
-          {agent.createdAt && (
-            <p className="text-gray-600 text-xs mt-0.5">
-              Inscrit le {formatDate(agent.createdAt)}
-            </p>
+          {activateError && (
+            <p className="text-red-400 text-xs mt-1 bg-red-400/10 px-2 py-1 rounded-lg">{activateError}</p>
           )}
+
+          {/* Stats de performance */}
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-800/60">
+            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <ArrowDownCircle className="w-3 h-3 text-green-400" />
+                <p className="text-green-400 font-bold text-sm">{stats?.deposits ?? 0}</p>
+              </div>
+              <p className="text-gray-600 text-xs">Dépôts</p>
+            </div>
+            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <ArrowUpCircle className="w-3 h-3 text-red-400" />
+                <p className="text-red-400 font-bold text-sm">{stats?.withdrawals ?? 0}</p>
+              </div>
+              <p className="text-gray-600 text-xs">Retraits</p>
+            </div>
+            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <TrendingUp className="w-3 h-3 text-primary-400" />
+                <p className="text-primary-400 font-bold text-xs">{formatCFA(stats?.totalAmount ?? 0)}</p>
+              </div>
+              <p className="text-gray-600 text-xs">Traités</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mt-2">
+            <button onClick={() => onEdit(agent)}
+              className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
+              <Pencil className="w-3 h-3" /> Modifier numéros
+            </button>
+            {agent.createdAt && (
+              <span className="text-gray-700 text-xs">· Inscrit le {formatDate(agent.createdAt)}</span>
+            )}
+          </div>
         </div>
 
-        <button
-          onClick={handleToggle}
-          disabled={loading}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex-shrink-0
+        <button onClick={handleToggle} disabled={loading}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0
             ${agent.active
               ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
               : 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20'
-            } disabled:opacity-50`}
-        >
-          {loading ? <RefreshCw className="w-4 h-4 animate-spin" />
-            : agent.active ? <><UserX className="w-4 h-4" /> Désactiver</>
-            : <><UserCheck className="w-4 h-4" /> Activer</>}
+            } disabled:opacity-50`}>
+          {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            : agent.active ? <><UserX className="w-3.5 h-3.5" /> Désactiver</>
+            : <><UserCheck className="w-3.5 h-3.5" /> Activer</>}
         </button>
       </div>
     </div>
@@ -332,6 +399,8 @@ export default function AdminAgents() {
   const [search,       setSearch]       = useState('');
   const [showCreate,   setShowCreate]   = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
+  const [activeConfig, setActiveConfig] = useState(null);
+  const [agentStats,   setAgentStats]   = useState({}); // { [uid]: { deposits, withdrawals, totalAmount } }
 
   useEffect(() => {
     const q = query(collection(db, 'users'), where('role', '==', 'agent'));
@@ -341,15 +410,49 @@ export default function AdminAgents() {
     });
   }, []);
 
+  // Écoute la config des numéros actifs
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'activeNumbers'), snap => {
+      setActiveConfig(snap.exists() ? snap.data() : null);
+    });
+  }, []);
+
+  // Calcule les stats de performance par agent (transactions terminées)
+  useEffect(() => {
+    const q = query(collection(db, 'transactions'), where('status', '==', 'completed'));
+    return onSnapshot(q, (snap) => {
+      const stats = {};
+      snap.docs.forEach(d => {
+        const { agentId, type, amount } = d.data();
+        if (!agentId) return;
+        if (!stats[agentId]) stats[agentId] = { deposits: 0, withdrawals: 0, totalAmount: 0 };
+        if (type === 'deposit')    stats[agentId].deposits++;
+        else                       stats[agentId].withdrawals++;
+        stats[agentId].totalAmount += (amount || 0);
+      });
+      setAgentStats(stats);
+    });
+  }, []);
+
   const toggleAgent = async (uid, active) => {
     await updateDoc(doc(db, 'users', uid), { active, updatedAt: serverTimestamp() });
   };
 
-  const filtered = agents.filter(a => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return a.name?.toLowerCase().includes(q) || a.phone?.includes(q);
-  });
+  const handleActivate = async (opId, agentId, agentName, number) => {
+    await setActiveAgent(opId, agentId, agentName, number);
+  };
+
+  const filtered = agents
+    .filter(a => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return a.name?.toLowerCase().includes(q) || a.phone?.includes(q);
+    })
+    .sort((a, b) => {
+      const aTotal = (agentStats[a.uid]?.deposits || 0) + (agentStats[a.uid]?.withdrawals || 0);
+      const bTotal = (agentStats[b.uid]?.deposits || 0) + (agentStats[b.uid]?.withdrawals || 0);
+      return bTotal - aTotal; // meilleur en premier
+    });
 
   const activeCount = agents.filter(a => a.active).length;
   const missingCount = agents.filter(a => !a.operators || Object.keys(a.operators).length === 0).length;
@@ -436,10 +539,14 @@ export default function AdminAgents() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map(agent => (
+            {filtered.map((agent, index) => (
               <AgentCard key={agent.uid} agent={agent}
                 onToggle={toggleAgent}
-                onEdit={setEditingAgent} />
+                onEdit={setEditingAgent}
+                activeConfig={activeConfig}
+                onActivate={handleActivate}
+                stats={agentStats[agent.uid]}
+                rank={index + 1} />
             ))}
           </div>
         )}

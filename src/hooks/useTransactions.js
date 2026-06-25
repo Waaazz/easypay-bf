@@ -7,46 +7,76 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc,
+  setDoc,
   serverTimestamp,
   limit,
   runTransaction,
-  getDocs,
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebase/config';
 
 /**
- * Sélectionne l'agent le moins chargé parmi ceux qui gèrent l'opérateur donné.
- * Retourne l'objet agent (uid + operators + ...) ou null si aucun disponible.
+ * Lit le document public /config/activeNumbers.
+ * Structure : { orange: { number, agentId, agentName }, telmob: {...}, telecel: {...} }
+ * Accessible par tous (pas besoin d'authentification si les règles Firestore le permettent).
  */
-export async function getAvailableAgent(operatorId) {
-  // Récupère tous les agents actifs (requête champ unique → pas d'index composite)
-  const agentsSnap = await getDocs(
-    query(collection(db, 'users'), where('role', '==', 'agent'))
-  );
+export async function getActiveNumbers() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'activeNumbers'));
+    return snap.exists() ? snap.data() : null;
+  } catch {
+    return null;
+  }
+}
 
-  const eligible = agentsSnap.docs
-    .map(d => ({ uid: d.id, ...d.data() }))
-    .filter(a => a.active && a.operators?.[operatorId]);
+/**
+ * Met à jour /config/activeNumbers pour un opérateur donné.
+ * Appelé par l'admin quand il active un agent pour un opérateur.
+ */
+// Active ou désactive un agent pour TOUS ses opérateurs en une seule transaction
+export async function setAgentAvailability(agentId, agentName, operators, available) {
+  const configRef = doc(db, 'config', 'activeNumbers');
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(configRef);
+    const data = snap.exists() ? snap.data() : {};
+    const updated = { ...data };
 
-  if (eligible.length === 0) return null;
-  if (eligible.length === 1) return eligible[0];
+    for (const [opId, number] of Object.entries(operators)) {
+      if (!number) continue;
+      const raw = updated[opId];
+      const currentList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
 
-  // Compte les transactions actives de chaque agent (filtre client-side pour éviter index composite)
-  const counts = await Promise.all(
-    eligible.map(async (agent) => {
-      const snap = await getDocs(
-        query(collection(db, 'transactions'), where('assignedAgentId', '==', agent.uid))
-      );
-      const active = snap.docs.filter(d =>
-        ['pending', 'awaiting_confirmation', 'processing'].includes(d.data().status)
-      ).length;
-      return { agent, count: active };
-    })
-  );
+      if (available) {
+        if (!currentList.some(a => a.agentId === agentId)) {
+          updated[opId] = [...currentList, { agentId, agentName, number }];
+        }
+      } else {
+        updated[opId] = currentList.filter(a => a.agentId !== agentId);
+      }
+    }
 
-  counts.sort((a, b) => a.count - b.count);
-  return counts[0].agent;
+    tx.set(configRef, { ...updated, updatedAt: serverTimestamp() });
+  });
+}
+
+// Toggle : ajoute ou retire l'agent du tableau des actifs pour cet opérateur
+export async function setActiveAgent(operatorId, agentId, agentName, number) {
+  const configRef = doc(db, 'config', 'activeNumbers');
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(configRef);
+    const data = snap.exists() ? snap.data() : {};
+    // Compatibilité avec l'ancienne structure objet
+    const raw = data[operatorId];
+    const currentList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+
+    const alreadyActive = currentList.some(a => a.agentId === agentId);
+    const newList = alreadyActive
+      ? currentList.filter(a => a.agentId !== agentId)       // désactiver
+      : [...currentList, { agentId, agentName, number }];    // activer
+
+    tx.set(configRef, { ...data, [operatorId]: newList, updatedAt: serverTimestamp() });
+  });
 }
 
 /**
