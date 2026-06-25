@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home,
-  History,
-  LogOut,
-  User,
-  ChevronDown,
-  Menu,
-  X,
-  Shield,
-  Users,
+  Home, History, LogOut, User, Menu, X,
+  Shield, Users, LayoutDashboard, ArrowDownCircle,
+  ArrowUpCircle, ClipboardList,
 } from 'lucide-react';
-function NavLink({ to, icon: Icon, label, onClick }) {
+import { useAuth } from '../hooks/useAuth';
+
+function NavLink({ to, icon: Icon, label, onClick, exact }) {
   const location = useLocation();
-  const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+  const isActive = exact
+    ? location.pathname === to
+    : location.pathname === to || location.pathname.startsWith(to + '/');
 
   return (
     <Link
@@ -25,86 +23,124 @@ function NavLink({ to, icon: Icon, label, onClick }) {
           : 'text-gray-400 hover:text-white hover:bg-gray-800'
         }`}
     >
-      <Icon className="w-5 h-5" />
-      <span className="font-medium">{label}</span>
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      <span className="font-medium text-sm">{label}</span>
     </Link>
   );
 }
 
+function NavSection({ title, children }) {
+  return (
+    <div className="space-y-1">
+      {title && <p className="text-gray-600 text-xs font-semibold uppercase tracking-wider px-4 pb-1 pt-3">{title}</p>}
+      {children}
+    </div>
+  );
+}
+
 export default function Navbar() {
-  const userProfile = { name: 'Démo Client', role: 'client' };
+  const { user, userProfile, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {};
+  // Détection du rôle : auth en priorité, sinon basé sur l'URL
+  const authRole = userProfile?.role;
+  const isAdminPath = location.pathname.startsWith('/admin');
+  const isAgentPath = location.pathname.startsWith('/agent');
+  // /admin a toujours la priorité (pas encore de login admin dédié)
+  const role = isAdminPath ? 'admin' : (authRole || (isAgentPath ? 'agent' : 'client'));
 
-  const role = userProfile?.role || 'client';
+  const displayName = userProfile?.name || user?.displayName || user?.phoneNumber || 'Utilisateur';
+  const displayPhone = userProfile?.phone || '';
 
-  const clientLinks = [
-    { to: '/dashboard', icon: Home, label: 'Tableau de bord' },
-    { to: '/history', icon: History, label: 'Historique' },
-  ];
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
-  const agentLinks = [
-    { to: '/agent', icon: Home, label: 'Tableau de bord' },
-  ];
+  // ── Liens par rôle ────────────────────────────────────────────────────────
+  const clientNav = (
+    <NavSection>
+      <NavLink to="/"        icon={Home}    label="Accueil"    exact />
+      <NavLink to="/history" icon={History} label="Historique" />
+    </NavSection>
+  );
 
-  const adminLinks = [
-    { to: '/admin', icon: Shield, label: 'Dashboard' },
-    { to: '/admin/transactions', icon: History, label: 'Transactions' },
-    { to: '/admin/agents', icon: Users, label: 'Agents' },
-  ];
+  const agentNav = (
+    <NavSection>
+      <NavLink to="/agent"             icon={LayoutDashboard} label="Tableau de bord" exact />
+      <NavLink to="/agent/orders"      icon={ClipboardList}   label="Commandes"       />
+    </NavSection>
+  );
 
-  const links = role === 'admin' ? adminLinks : role === 'agent' ? agentLinks : clientLinks;
+  const adminNav = (
+    <>
+      <NavSection title="Général">
+        <NavLink to="/admin"              icon={LayoutDashboard}  label="Dashboard"     exact />
+      </NavSection>
+      <NavSection title="Activité">
+        <NavLink to="/admin/transactions" icon={ClipboardList}    label="Transactions"  />
+        <NavLink to="/admin/deposits"     icon={ArrowDownCircle}  label="Dépôts"        />
+        <NavLink to="/admin/withdrawals"  icon={ArrowUpCircle}    label="Retraits"      />
+      </NavSection>
+      <NavSection title="Équipe">
+        <NavLink to="/admin/agents"       icon={Users}            label="Agents"        />
+      </NavSection>
+    </>
+  );
+
+  const navContent = role === 'admin' ? adminNav : role === 'agent' ? agentNav : clientNav;
+
+  const roleLabel = role === 'admin' ? 'Administration' : role === 'agent' ? 'Agent' : 'Client';
+
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div className="p-6 border-b border-gray-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-lg">E</span>
+          </div>
+          <div>
+            <h1 className="text-white font-bold text-lg leading-none">EasyPay BF</h1>
+            <p className="text-gray-500 text-xs mt-0.5">{roleLabel}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 overflow-y-auto space-y-1">
+        {navContent}
+      </nav>
+
+      {/* Profil + Déconnexion */}
+      <div className="p-4 border-t border-gray-800 flex-shrink-0">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+            <User className="w-5 h-5 text-gray-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-medium text-sm truncate">{displayName}</p>
+            {displayPhone && <p className="text-gray-500 text-xs truncate">{displayPhone}</p>}
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-400/5 rounded-lg transition-all duration-200"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="text-sm">Déconnexion</span>
+        </button>
+      </div>
+    </>
+  );
 
   return (
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-gray-900 border-r border-gray-800 min-h-screen fixed left-0 top-0 z-40">
-        {/* Logo */}
-        <div className="p-6 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">E</span>
-            </div>
-            <div>
-              <h1 className="text-white font-bold text-lg leading-none">EasyPay BF</h1>
-              <p className="text-gray-500 text-xs mt-0.5">
-                {role === 'admin' ? 'Administration' : role === 'agent' ? 'Agent' : 'Client'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          {links.map((link) => (
-            <NavLink key={link.to} {...link} />
-          ))}
-        </nav>
-
-        {/* User Profile */}
-        <div className="p-4 border-t border-gray-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-medium text-sm truncate">
-                {userProfile?.name || 'Utilisateur'}
-              </p>
-              <p className="text-gray-500 text-xs truncate">
-                {userProfile?.phone}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-400/5 rounded-lg transition-all duration-200"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm">Déconnexion</span>
-          </button>
-        </div>
+        {sidebarContent}
       </aside>
 
       {/* Mobile Header */}
@@ -127,19 +163,16 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-gray-950/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-gray-950/80 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        >
           <div
-            className="absolute top-16 left-0 right-0 bg-gray-900 border-b border-gray-800 p-4"
-            onClick={(e) => e.stopPropagation()}
+            className="absolute top-16 left-0 right-0 bg-gray-900 border-b border-gray-800 p-4 max-h-[80vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
           >
-            <nav className="space-y-1 mb-4">
-              {links.map((link) => (
-                <NavLink
-                  key={link.to}
-                  {...link}
-                  onClick={() => setMobileOpen(false)}
-                />
-              ))}
+            <nav className="space-y-1 mb-4" onClick={() => setMobileOpen(false)}>
+              {navContent}
             </nav>
             <div className="border-t border-gray-800 pt-4">
               <div className="flex items-center gap-3 mb-3 px-2">
@@ -147,8 +180,8 @@ export default function Navbar() {
                   <User className="w-4 h-4 text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium">{userProfile?.name || 'Utilisateur'}</p>
-                  <p className="text-gray-500 text-xs">{userProfile?.phone}</p>
+                  <p className="text-white text-sm font-medium">{displayName}</p>
+                  {displayPhone && <p className="text-gray-500 text-xs">{displayPhone}</p>}
                 </div>
               </div>
               <button

@@ -3,29 +3,64 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   updateDoc,
   doc,
   serverTimestamp,
   limit,
+  runTransaction,
   getDocs,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../firebase/config';
 
-// Mock user for development (no auth)
-const MOCK_USER = { uid: 'demo-client-001' };
-const MOCK_PROFILE = { uid: 'demo-client-001', name: 'Démo Client', phone: '+22600000000', role: 'client' };
+/**
+ * Sélectionne l'agent le moins chargé parmi ceux qui gèrent l'opérateur donné.
+ * Retourne l'objet agent (uid + operators + ...) ou null si aucun disponible.
+ */
+export async function getAvailableAgent(operatorId) {
+  // Récupère tous les agents actifs (requête champ unique → pas d'index composite)
+  const agentsSnap = await getDocs(
+    query(collection(db, 'users'), where('role', '==', 'agent'))
+  );
+
+  const eligible = agentsSnap.docs
+    .map(d => ({ uid: d.id, ...d.data() }))
+    .filter(a => a.active && a.operators?.[operatorId]);
+
+  if (eligible.length === 0) return null;
+  if (eligible.length === 1) return eligible[0];
+
+  // Compte les transactions actives de chaque agent (filtre client-side pour éviter index composite)
+  const counts = await Promise.all(
+    eligible.map(async (agent) => {
+      const snap = await getDocs(
+        query(collection(db, 'transactions'), where('assignedAgentId', '==', agent.uid))
+      );
+      const active = snap.docs.filter(d =>
+        ['pending', 'awaiting_confirmation', 'processing'].includes(d.data().status)
+      ).length;
+      return { agent, count: active };
+    })
+  );
+
+  counts.sort((a, b) => a.count - b.count);
+  return counts[0].agent;
+}
 
 /**
  * Hook for client transactions
  */
 export function useClientTransactions() {
-  const user = MOCK_USER;
+  const [user, setUser] = useState(auth.currentUser);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (firebaseUser) => setUser(firebaseUser));
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -37,14 +72,15 @@ export function useClientTransactions() {
     const q = query(
       collection(db, 'transactions'),
       where('clientId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
       limit(50)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const txs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const txs = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setTransactions(txs);
         setLoading(false);
         setError(null);
@@ -63,24 +99,36 @@ export function useClientTransactions() {
 }
 
 /**
- * Hook for agent - pending/processing orders
+ * Hook for agent — only transactions assigned to this agent
  */
 export function useAgentTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
+    return onAuthStateChanged(auth, u => setUser(u));
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return; }
+
+    // Transactions assignées à cet agent OU non-assignées (null = avant configuration opérateurs)
+    // `in` sur un seul champ → pas d'index composite requis
     const q = query(
       collection(db, 'transactions'),
-      where('status', 'in', ['pending', 'processing']),
-      orderBy('createdAt', 'desc')
+      where('assignedAgentId', 'in', [user.uid, null])
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const txs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const active = ['pending', 'awaiting_confirmation', 'processing'];
+        const txs = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((t) => active.includes(t.status))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setTransactions(txs);
         setLoading(false);
         setError(null);
@@ -93,7 +141,7 @@ export function useAgentTransactions() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   return { transactions, loading, error };
 }
@@ -112,13 +160,11 @@ export function useAdminTransactions(statusFilter = null) {
       q = query(
         collection(db, 'transactions'),
         where('status', '==', statusFilter),
-        orderBy('createdAt', 'desc'),
         limit(100)
       );
     } else {
       q = query(
         collection(db, 'transactions'),
-        orderBy('createdAt', 'desc'),
         limit(100)
       );
     }
@@ -126,7 +172,9 @@ export function useAdminTransactions(statusFilter = null) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const txs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const txs = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setTransactions(txs);
         setLoading(false);
         setError(null);
@@ -148,8 +196,6 @@ export function useAdminTransactions(statusFilter = null) {
  * Hook for transaction actions
  */
 export function useTransactionActions() {
-  const user = MOCK_USER;
-  const userProfile = MOCK_PROFILE;
   const [submitting, setSubmitting] = useState(false);
 
   const createTransaction = useCallback(async (data) => {
@@ -157,9 +203,8 @@ export function useTransactionActions() {
     try {
       const txData = {
         ...data,
-        clientId: user.uid,
-        clientName: userProfile.name || userProfile.phone,
-        agentId: null,
+        clientId: auth.currentUser?.uid || 'anonymous',
+        clientName: auth.currentUser?.displayName || auth.currentUser?.phoneNumber || 'Client',
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -173,23 +218,54 @@ export function useTransactionActions() {
     } finally {
       setSubmitting(false);
     }
-  }, [user, userProfile]);
+  }, []);
 
-  const acceptOrder = useCallback(async (transactionId) => {
-    if (!user) return { success: false, error: 'Non authentifié' };
+  const confirmPayment = useCallback(async (transactionId) => {
     try {
       const txRef = doc(db, 'transactions', transactionId);
       await updateDoc(txRef, {
-        status: 'processing',
-        agentId: user.uid,
+        status: 'awaiting_confirmation',
         updatedAt: serverTimestamp(),
       });
       return { success: true };
     } catch (error) {
-      console.error('Error accepting order:', error);
+      console.error('Error confirming payment:', error);
       return { success: false, error: error.message };
     }
-  }, [user]);
+  }, []);
+
+  const acceptOrder = useCallback(async (transactionId, agentName) => {
+    const txRef = doc(db, 'transactions', transactionId);
+    const agentId = auth.currentUser?.uid;
+    if (!agentId) return { success: false, error: 'Non authentifié.' };
+
+    try {
+      await runTransaction(db, async (firestoreTx) => {
+        const snap = await firestoreTx.get(txRef);
+        if (!snap.exists()) throw new Error('Demande introuvable.');
+
+        const data = snap.data();
+        const claimable = ['pending', 'awaiting_confirmation'];
+        if (!claimable.includes(data.status)) {
+          throw new Error(
+            data.agentName
+              ? `Déjà prise en charge par ${data.agentName}.`
+              : 'Cette demande a déjà été prise en charge par un autre agent.'
+          );
+        }
+
+        firestoreTx.update(txRef, {
+          status: 'processing',
+          agentId,
+          agentName: agentName || 'Agent',
+          updatedAt: serverTimestamp(),
+        });
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }, []);
 
   const completeOrder = useCallback(async (transactionId) => {
     try {
@@ -220,5 +296,5 @@ export function useTransactionActions() {
     }
   }, []);
 
-  return { createTransaction, acceptOrder, completeOrder, cancelOrder, submitting };
+  return { createTransaction, confirmPayment, acceptOrder, completeOrder, cancelOrder, submitting };
 }

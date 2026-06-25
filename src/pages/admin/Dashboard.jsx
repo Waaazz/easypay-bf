@@ -60,7 +60,7 @@ export default function AdminDashboard() {
 
   const stats = useMemo(() => {
     const completed = transactions.filter((t) => t.status === 'completed');
-    const pending = transactions.filter((t) => t.status === 'pending' || t.status === 'processing');
+    const pending = transactions.filter((t) => ['pending', 'awaiting_confirmation', 'processing'].includes(t.status));
     const deposits = completed.filter((t) => t.type === 'deposit');
     const withdrawals = completed.filter((t) => t.type === 'withdrawal');
     const agents = new Set(transactions.filter((t) => t.agentId).map((t) => t.agentId));
@@ -208,13 +208,15 @@ export default function AdminDashboard() {
                     <p className="text-gray-500 text-xs">{formatCFA(tx.amount)}</p>
                   </div>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full
-                    ${tx.status === 'completed' ? 'text-green-400 bg-green-400/10'
-                    : tx.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10'
-                    : tx.status === 'processing' ? 'text-blue-400 bg-blue-400/10'
+                    ${tx.status === 'completed'             ? 'text-green-400 bg-green-400/10'
+                    : tx.status === 'pending'               ? 'text-yellow-400 bg-yellow-400/10'
+                    : tx.status === 'awaiting_confirmation' ? 'text-purple-400 bg-purple-400/10'
+                    : tx.status === 'processing'            ? 'text-blue-400 bg-blue-400/10'
                     : 'text-red-400 bg-red-400/10'}`}>
-                    {tx.status === 'completed' ? 'Terminé'
-                      : tx.status === 'pending' ? 'Attente'
-                      : tx.status === 'processing' ? 'En cours'
+                    {tx.status === 'completed'             ? 'Terminé'
+                      : tx.status === 'pending'               ? 'Attente'
+                      : tx.status === 'awaiting_confirmation' ? 'Paiement envoyé'
+                      : tx.status === 'processing'            ? 'En cours'
                       : 'Annulé'}
                   </span>
                 </div>

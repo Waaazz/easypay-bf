@@ -10,13 +10,14 @@ import {
   User,
   Calendar,
   CreditCard,
+  AlertCircle,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
 import { db } from '../../firebase/config';
 import { useTransactionActions } from '../../hooks/useTransactions';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
-import { OPERATORS } from '../../utils/constants';
+import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -70,7 +71,11 @@ export default function OrderDetail() {
     if (!result.success) setError(result.error);
   };
 
-  const operator = OPERATORS.find((o) => o.id === transaction?.operator);
+  const isDeposit = transaction?.type === 'deposit';
+  const operator = isDeposit
+    ? AGENT_NUMBERS.find(o => o.id === transaction?.operator)
+    : OPERATORS.find(o => o.id === transaction?.operator);
+  const isAwaitingConfirm = transaction?.status === 'awaiting_confirmation';
 
   if (loading) {
     return (
@@ -115,18 +120,42 @@ export default function OrderDetail() {
         </div>
 
         <div className="card space-y-4">
+
+          {/* Alerte paiement envoyé */}
+          {isAwaitingConfirm && (
+            <div className="bg-purple-500/15 border border-purple-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-purple-300 text-sm font-semibold mb-0.5">Paiement annoncé par le client</p>
+                <p className="text-purple-400 text-xs">
+                  Le client dit avoir envoyé {formatCFA(transaction.amount)} depuis le numéro{' '}
+                  <span className="font-bold">+226 {transaction.clientPhone}</span> via {operator?.name}.
+                  Vérifiez votre compte mobile money avant d'accepter.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-3">
             {[
-              { icon: CreditCard, label: 'Type', value: transaction.type === 'deposit' ? 'Dépôt' : 'Retrait' },
-              { icon: CreditCard, label: 'Montant', value: formatCFA(transaction.amount) },
-              { icon: CreditCard, label: 'Opérateur', value: `${operator?.logo} ${operator?.name}` },
-              { icon: Phone, label: 'Téléphone', value: `+226 ${transaction.phone}` },
-              { icon: User, label: 'Client', value: transaction.clientName || 'Inconnu' },
-              { icon: Calendar, label: 'Date', value: formatDate(transaction.createdAt) },
+              { icon: CreditCard, label: 'Type',      value: isDeposit ? 'Dépôt' : 'Retrait' },
+              { icon: CreditCard, label: 'Montant',   value: formatCFA(transaction.amount) },
+              { icon: CreditCard, label: 'Plateforme',value: transaction.platform?.toUpperCase() },
+              { icon: User,       label: 'ID compte', value: transaction.accountId },
+              { icon: CreditCard, label: 'Opérateur', value: `${operator?.logo || ''} ${operator?.name || '—'}` },
+              isDeposit
+                ? { icon: Phone, label: 'N° client',  value: `+226 ${transaction.clientPhone || '—'}` }
+                : { icon: Phone, label: 'N° Orange',  value: `+226 ${transaction.phone || '—'}` },
+              ...(!isDeposit ? [
+                { icon: User,       label: 'Titulaire',  value: transaction.accountName || '—' },
+                { icon: CreditCard, label: 'Code retrait', value: transaction.withdrawCode || '—' },
+              ] : []),
+              { icon: User,     label: 'Client',     value: transaction.clientName || 'Inconnu' },
+              { icon: Calendar, label: 'Date',        value: formatDate(transaction.createdAt) },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3">
                 <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-400 text-sm w-24 flex-shrink-0">{label}</span>
+                <span className="text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
                 <span className="text-white font-medium text-sm">{value}</span>
               </div>
             ))}
@@ -140,12 +169,12 @@ export default function OrderDetail() {
         </div>
 
         {/* Actions */}
-        {transaction.status === 'pending' && (
+        {(transaction.status === 'pending' || isAwaitingConfirm) && (
           <div className="card space-y-3">
             <h3 className="text-white font-semibold">Actions</h3>
             <button onClick={handleAccept} disabled={actionLoading} className="btn-primary w-full">
               {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
-                <><CheckCircle className="w-4 h-4" /> Accepter la commande</>
+                <><CheckCircle className="w-4 h-4" /> {isAwaitingConfirm ? 'Vérifier et Accepter' : 'Accepter la commande'}</>
               )}
             </button>
             <button onClick={() => setShowCancel(!showCancel)} className="btn-danger w-full">

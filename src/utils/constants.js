@@ -5,6 +5,55 @@ export const OPERATORS = [
   { id: 'wave', name: 'Wave', color: '#1A90FF', bg: 'bg-sky-500', logo: '🌊' },
 ];
 
+// Numéros de dépôt de l'agent — remplacer les numéros par les vrais
+export const AGENT_NUMBERS = [
+  {
+    id: 'orange',
+    name: 'Orange Money',
+    logo: '🟠',
+    number: '07 00 00 00',
+    raw: '07000000',
+    dot: 'bg-orange-500',
+    text: 'text-orange-700',
+    bg: 'bg-orange-50',
+    border: 'border-orange-200',
+  },
+  {
+    id: 'telmob',
+    name: 'Telmob',
+    logo: '🔵',
+    number: '60 00 00 00',
+    raw: '60000000',
+    dot: 'bg-blue-600',
+    text: 'text-blue-700',
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+  },
+  {
+    id: 'telecel',
+    name: 'Telecel',
+    logo: '🔴',
+    number: '55 00 00 00',
+    raw: '55000000',
+    dot: 'bg-red-500',
+    text: 'text-red-700',
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+  },
+];
+
+// Générateurs de codes USSD par opérateur (Orange confirmé, Telmob/Telecel à vérifier)
+export const USSD_CODE = {
+  orange:  (agentRaw, amount) => `*144*2*1*${agentRaw}*${amount}#`,
+  telmob:  (agentRaw, amount) => `*555*1*${agentRaw}*${amount}#`,
+  telecel: (agentRaw, amount) => `*135*1*${agentRaw}*${amount}#`,
+};
+
+// Numéro WhatsApp support — à mettre à jour
+export const WHATSAPP_NUMBER = '22600000000';
+
+export const DEPOSIT_SESSION_MINUTES = 15;
+
 export const MIN_AMOUNT = 500;
 export const MAX_AMOUNT = 500000;
 
@@ -39,6 +88,12 @@ export const STATUS_CONFIG = {
     color: 'text-red-400',
     bg: 'bg-red-400/10',
     border: 'border-red-400/20',
+  },
+  awaiting_confirmation: {
+    label: 'Paiement envoyé',
+    color: 'text-purple-400',
+    bg: 'bg-purple-400/10',
+    border: 'border-purple-400/20',
   },
 };
 

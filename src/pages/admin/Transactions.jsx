@@ -11,11 +11,12 @@ import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
 import { useAdminTransactions } from '../../hooks/useTransactions';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
-import { OPERATORS } from '../../utils/constants';
+import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
 
 const STATUS_FILTERS = [
   { label: 'Tout', value: null },
   { label: 'En attente', value: 'pending' },
+  { label: 'Paiement envoyé', value: 'awaiting_confirmation' },
   { label: 'En cours', value: 'processing' },
   { label: 'Terminé', value: 'completed' },
   { label: 'Annulé', value: 'cancelled' },
@@ -27,11 +28,11 @@ const TYPE_FILTERS = [
   { label: 'Retraits', value: 'withdrawal' },
 ];
 
-export default function AdminTransactions() {
+export default function AdminTransactions({ initialType = null }) {
   const { transactions, loading } = useAdminTransactions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(null);
-  const [typeFilter, setTypeFilter] = useState(null);
+  const [typeFilter, setTypeFilter] = useState(initialType);
 
   const filtered = transactions.filter((tx) => {
     if (statusFilter && tx.status !== statusFilter) return false;
@@ -55,7 +56,9 @@ export default function AdminTransactions() {
     <Layout>
       <div className="space-y-5 animate-fade-in">
         <div className="flex items-center justify-between">
-          <h1 className="page-title">Transactions</h1>
+          <h1 className="page-title">
+            {initialType === 'deposit' ? 'Dépôts' : initialType === 'withdrawal' ? 'Retraits' : 'Transactions'}
+          </h1>
           <span className="text-gray-500 text-sm">{filtered.length} résultats</span>
         </div>
 
@@ -137,13 +140,17 @@ export default function AdminTransactions() {
         ) : (
           <div className="space-y-2">
             {filtered.map((tx) => {
-              const operator = OPERATORS.find((o) => o.id === tx.operator);
+              const isDeposit = tx.type === 'deposit';
+              const operator = isDeposit
+                ? AGENT_NUMBERS.find(o => o.id === tx.operator)
+                : OPERATORS.find(o => o.id === tx.operator);
+              const phone = isDeposit ? tx.clientPhone : tx.phone;
               return (
                 <div key={tx.id} className="card hover:border-gray-700 transition-all">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
-                      ${tx.type === 'deposit' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                      {tx.type === 'deposit'
+                      ${isDeposit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                      {isDeposit
                         ? <ArrowDownCircle className="w-4 h-4 text-green-400" />
                         : <ArrowUpCircle className="w-4 h-4 text-red-400" />
                       }
@@ -157,16 +164,17 @@ export default function AdminTransactions() {
                         <span className="text-gray-600 text-xs">{formatTxId(tx.id)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-gray-500 text-xs">{tx.phone}</span>
+                        {phone && <span className="text-gray-500 text-xs">{phone}</span>}
+                        {operator && <><span className="text-gray-600 text-xs">•</span><span className="text-gray-500 text-xs">{operator.logo} {operator.name}</span></>}
                         <span className="text-gray-600 text-xs">•</span>
-                        <span className="text-gray-500 text-xs">{operator?.name}</span>
+                        <span className="text-gray-600 text-xs">{tx.platform?.toUpperCase()}</span>
                         <span className="text-gray-600 text-xs">•</span>
                         <span className="text-gray-600 text-xs">{formatDate(tx.createdAt)}</span>
                       </div>
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <p className={`font-bold text-sm ${tx.type === 'deposit' ? 'text-green-400' : 'text-red-400'}`}>
+                      <p className={`font-bold text-sm ${isDeposit ? 'text-green-400' : 'text-red-400'}`}>
                         {formatCFA(tx.amount)}
                       </p>
                       <div className="mt-1">
@@ -176,7 +184,7 @@ export default function AdminTransactions() {
                   </div>
 
                   {tx.note && (
-                    <p className="text-gray-500 text-xs mt-2 pl-12">Note: {tx.note}</p>
+                    <p className="text-gray-500 text-xs mt-2 pl-12">Note : {tx.note}</p>
                   )}
                 </div>
               );

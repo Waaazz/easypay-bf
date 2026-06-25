@@ -278,6 +278,9 @@ export default function Login() {
         En continuant, vous acceptez nos{' '}
         <span className="text-gray-400">Conditions d'utilisation</span>
       </p>
+
+      {/* Requis par Firebase Phone Auth pour le reCAPTCHA invisible */}
+      <div id="recaptcha-container" />
     </div>
   );
 }

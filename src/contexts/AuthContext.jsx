@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   signInWithPhoneNumber,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInAnonymously,
   RecaptchaVerifier,
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { auth, db, secondaryAuth } from '../firebase/config';
 
 const AuthContext = createContext(null);
 
@@ -26,11 +29,17 @@ export function AuthProvider({ children }) {
         } catch (err) {
           console.error('Error fetching user profile:', err);
         }
+        setLoading(false);
       } else {
-        setUser(null);
-        setUserProfile(null);
+        // Pas d'utilisateur → connexion anonyme automatique pour persister l'historique
+        try {
+          await signInAnonymously(auth);
+          // onAuthStateChanged se relancera avec l'utilisateur anonyme
+        } catch (err) {
+          console.error('Error signing in anonymously:', err);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -131,6 +140,62 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // ── Connexion agent (numéro + mot de passe) ─────────────────────────────
+  const phoneToEmail = (phone) => {
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.startsWith('226') ? digits : `226${digits}`;
+    return `${normalized}@easypay-agent.bf`;
+  };
+
+  const loginAgent = async (phone, password) => {
+    const email = phoneToEmail(phone);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Numéro ou mot de passe incorrect.' };
+    }
+  };
+
+  // ── Création compte agent par l'admin ────────────────────────────────────
+  // operators = { orange: '07XXXXXX', telmob: '60XXXXXX', telecel: '55XXXXXX' }
+  const createAgentAccount = async (name, phone, password, operators = {}) => {
+    const email = phoneToEmail(phone);
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.startsWith('226') ? digits : `226${digits}`;
+    const formattedPhone = `+${normalized}`;
+
+    // Nettoie les opérateurs vides
+    const cleanOperators = Object.fromEntries(
+      Object.entries(operators).filter(([, v]) => v && v.trim())
+    );
+
+    try {
+      const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const newUid = userCred.user.uid;
+
+      await setDoc(doc(db, 'users', newUid), {
+        uid: newUid,
+        name,
+        phone: formattedPhone,
+        email,
+        role: 'agent',
+        active: true,
+        operators: cleanOperators,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await signOut(secondaryAuth);
+      return { success: true };
+    } catch (error) {
+      const msg = error.code === 'auth/email-already-in-use'
+        ? 'Un agent avec ce numéro existe déjà.'
+        : error.message;
+      return { success: false, error: msg };
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -145,6 +210,8 @@ export function AuthProvider({ children }) {
     loading,
     sendOTP,
     verifyOTP,
+    loginAgent,
+    createAgentAccount,
     logout,
     updateUserProfile,
     refreshProfile: () => user ? fetchUserProfile(user.uid).then(setUserProfile) : Promise.resolve(),
