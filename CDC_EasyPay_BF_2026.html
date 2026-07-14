@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Cahier des Charges — EasyPay BF</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}
+.page{max-width:820px;margin:0 auto;padding:40px 48px}
+@media print{
+  .page{padding:20px 28px}
+  .page-break{page-break-before:always}
+}
+/* Cover */
+.cover{min-height:92vh;display:flex;flex-direction:column;justify-content:space-between;border:2px solid #2563eb;border-radius:4px;padding:48px}
+.cover-top .badge{display:inline-block;background:#2563eb;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:3px;margin-bottom:24px}
+.cover-top h1{font-size:34px;font-weight:800;color:#1a1a1a;line-height:1.2;margin-bottom:8px}
+.cover-top h2{font-size:20px;font-weight:400;color:#2563eb;margin-bottom:32px}
+.cover-top .cover-desc{font-size:13px;color:#555;line-height:1.8;max-width:480px}
+.cover-mid{text-align:center}
+.cover-mid .logo{font-size:48px;font-weight:900;color:#2563eb;letter-spacing:-2px}
+.cover-mid .logo-sub{font-size:13px;color:#6b7280;margin-top:6px;letter-spacing:2px;text-transform:uppercase}
+.cover-bot{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #e5e7eb;padding-top:24px}
+.cover-bot .meta{font-size:12px;color:#555;line-height:1.8}
+.cover-bot .meta strong{color:#1a1a1a}
+.cover-bot .version{background:#f3f4f6;border-radius:6px;padding:8px 16px;font-size:12px;color:#374151;text-align:right}
+/* Content */
+.meta-bar{font-size:10px;color:#6b7280;text-align:center;margin-bottom:22px;padding-bottom:10px;border-top:1px solid #e5e7eb;padding-top:10px;font-style:italic}
+.section-title{font-size:15px;font-weight:700;color:#2563eb;margin:28px 0 12px;padding-bottom:6px;border-bottom:2px solid #e5e7eb}
+.subsection{font-size:13px;font-weight:700;color:#1e3a8a;margin:18px 0 8px}
+p{font-size:12.5px;color:#374151;line-height:1.75;margin-bottom:8px}
+.info-box{border-left:3px solid #2563eb;padding:12px 16px;background:#f8faff;margin:12px 0;line-height:1.75;font-size:12.5px;color:#333}
+.warning-box{border-left:3px solid #f59e0b;padding:12px 16px;background:#fffbeb;margin:12px 0;line-height:1.75;font-size:12.5px;color:#78350f}
+.success-box{border-left:3px solid #16a34a;padding:12px 16px;background:#f0fdf4;margin:12px 0;line-height:1.75;font-size:12.5px;color:#14532d}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+table thead tr{background:#1e3a8a}
+table thead th{padding:9px 12px;text-align:left;font-size:11px;color:#fff;font-weight:600}
+table tbody tr{border-bottom:1px solid #f3f4f6}
+table tbody tr:nth-child(even){background:#f9fafb}
+table tbody td{padding:9px 12px;color:#374151;vertical-align:top;line-height:1.6}
+table tbody td.feature{font-weight:600;color:#1a1a1a;width:200px}
+table tbody td.done{color:#16a34a;font-weight:700;text-align:center;width:80px}
+table tbody td.tag{width:90px}
+.badge-done{display:inline-block;background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap}
+.badge-todo{display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap}
+.badge-opt{display:inline-block;background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap}
+ul.list{list-style:none;margin:8px 0 12px;padding-left:4px}
+ul.list li{font-size:12.5px;color:#374151;padding:4px 0;display:flex;align-items:flex-start;gap:8px;line-height:1.6}
+ul.list li::before{content:'→';color:#2563eb;flex-shrink:0;font-weight:700}
+.workflow{display:flex;align-items:center;gap:8px;margin:14px 0;flex-wrap:wrap}
+.wf-step{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;color:#374151;text-align:center;min-width:100px}
+.wf-step.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.wf-arrow{color:#9ca3af;font-size:16px;font-weight:700}
+.stack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
+.stack-card{border:1px solid #e5e7eb;border-radius:8px;padding:14px}
+.stack-card .sc-cat{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.stack-card .sc-item{font-size:12px;color:#1a1a1a;padding:3px 0;display:flex;align-items:center;gap:6px}
+.stack-card .sc-item::before{content:'•';color:#2563eb;font-weight:900}
+.screen-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.screen-card{border:1px solid #e5e7eb;border-radius:8px;padding:12px}
+.screen-card .sc-title{font-size:12px;font-weight:700;color:#1e3a8a;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.screen-card ul{list-style:none}
+.screen-card ul li{font-size:11.5px;color:#555;padding:2px 0;display:flex;gap:6px}
+.screen-card ul li::before{content:'·';color:#2563eb;font-weight:900}
+.rule-table td:first-child{font-weight:700;color:#1a1a1a;width:200px}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:10px;color:#9ca3af}
+.toc{margin:16px 0}
+.toc-item{display:flex;align-items:baseline;gap:6px;padding:5px 0;border-bottom:1px dotted #e5e7eb;font-size:12.5px}
+.toc-item .toc-num{color:#2563eb;font-weight:700;width:30px;flex-shrink:0}
+.toc-item .toc-title{color:#374151;flex:1}
+.toc-item .toc-page{color:#9ca3af;font-size:11px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- PAGE DE GARDE -->
+<div class="cover">
+  <div class="cover-top">
+    <div class="badge">Cahier des Charges</div>
+    <h1>EasyPay BF</h1>
+    <h2>Application Mobile — Dépôt & Retrait Paris Sportifs</h2>
+    <div class="cover-desc">
+      Document décrivant l'ensemble des spécifications fonctionnelles et techniques de l'application EasyPay BF : état des livrables déjà réalisés, périmètre de la conversion mobile React Native, règles métier, architecture Firebase et planning prévisionnel.
+    </div>
+  </div>
+  <div class="cover-mid">
+    <div class="logo">EasyPay BF</div>
+    <div class="logo-sub">Dépôt & Retrait · Paris Sportifs · Burkina Faso</div>
+  </div>
+  <div class="cover-bot">
+    <div class="meta">
+      <strong>Prestataire :</strong> WOUBI ABDOUL AZIZ<br>
+      Développeur Full-Stack & Mobile<br>
+      woubiaziz@gmail.com — +226 54 12 56 37<br>
+      <strong>Client :</strong> [NOM DU CLIENT]<br>
+      <strong>Date :</strong> 19 juin 2026 &nbsp;|&nbsp; <strong>Réf. :</strong> CDC-EASYPAY-2026-001
+    </div>
+    <div class="version">
+      Version 1.0<br>
+      Statut : En cours de développement<br>
+      Confidentialité : Document confidentiel
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 — SOMMAIRE + PRÉSENTATION -->
+<div class="page-break"></div>
+<div class="meta-bar">Cahier des Charges — EasyPay BF | Réf. CDC-EASYPAY-2026-001 | 19 juin 2026 | Document confidentiel</div>
+
+<div class="section-title">Sommaire</div>
+<div class="toc">
+  <div class="toc-item"><span class="toc-num">1</span><span class="toc-title">Présentation générale du projet</span></div>
+  <div class="toc-item"><span class="toc-num">2</span><span class="toc-title">Contexte et objectifs</span></div>
+  <div class="toc-item"><span class="toc-num">3</span><span class="toc-title">Utilisateurs et rôles</span></div>
+  <div class="toc-item"><span class="toc-num">4</span><span class="toc-title">Ce qui a déjà été livré — Prototype web</span></div>
+  <div class="toc-item"><span class="toc-num">5</span><span class="toc-title">Périmètre de la conversion mobile</span></div>
+  <div class="toc-item"><span class="toc-num">6</span><span class="toc-title">Fonctionnalités détaillées par module</span></div>
+  <div class="toc-item"><span class="toc-num">7</span><span class="toc-title">Workflow des transactions</span></div>
+  <div class="toc-item"><span class="toc-num">8</span><span class="toc-title">Règles métier</span></div>
+  <div class="toc-item"><span class="toc-num">9</span><span class="toc-title">Architecture technique</span></div>
+  <div class="toc-item"><span class="toc-num">10</span><span class="toc-title">Base de données Firebase</span></div>
+  <div class="toc-item"><span class="toc-num">11</span><span class="toc-title">Livrables et planning prévisionnel</span></div>
+</div>
+
+<!-- 1. Présentation -->
+<div class="section-title">1. Présentation générale du projet</div>
+
+<table>
+  <tbody>
+    <tr><td class="feature">Nom du projet</td><td>EasyPay BF</td></tr>
+    <tr><td class="feature">Nature</td><td>Application mobile de dépôt et de retrait d'argent pour les paris sportifs</td></tr>
+    <tr><td class="feature">Plateformes cibles</td><td>Android (Google Play Store) + iOS (Apple App Store)</td></tr>
+    <tr><td class="feature">Pays d'exploitation</td><td>Burkina Faso</td></tr>
+    <tr><td class="feature">Plateformes de paris</td><td>1XBET, MELBET, BETWINNER</td></tr>
+    <tr><td class="feature">Opérateurs mobiles</td><td>Orange Money, Moov Money, Coris Money, Wave</td></tr>
+    <tr><td class="feature">Prestataire</td><td>WOUBI ABDOUL AZIZ — Développeur Full-Stack & Mobile</td></tr>
+    <tr><td class="feature">Client</td><td>[NOM DU CLIENT]</td></tr>
+    <tr><td class="feature">Date du document</td><td>19 juin 2026</td></tr>
+    <tr><td class="feature">Référence</td><td>CDC-EASYPAY-2026-001</td></tr>
+  </tbody>
+</table>
+
+<!-- 2. Contexte -->
+<div class="section-title">2. Contexte et objectifs</div>
+
+<div class="info-box">
+  EasyPay BF est une plateforme qui fait le lien entre les parieurs (clients), les opérateurs de transaction (agents) et la direction (administrateurs). Elle permet aux clients de recharger leur compte sur des plateformes de paris ou de retirer leurs gains, sans avoir à se déplacer physiquement, grâce à un réseau d'agents locaux.
+</div>
+
+<div class="subsection">Objectifs principaux</div>
+<ul class="list">
+  <li>Permettre aux clients de soumettre des demandes de dépôt ou de retrait depuis leur smartphone en quelques secondes</li>
+  <li>Donner aux agents un outil mobile pour gérer les commandes clients en temps réel (accepter, traiter, compléter)</li>
+  <li>Fournir à l'administration une vue globale des transactions, des volumes et des agents actifs</li>
+  <li>Garantir la traçabilité complète de chaque transaction avec un système de statuts</li>
+  <li>Sécuriser les accès par authentification OTP (code SMS) pour chaque utilisateur</li>
+</ul>
+
+<!-- 3. Utilisateurs -->
+<div class="section-title">3. Utilisateurs et rôles</div>
+
+<table>
+  <thead>
+    <tr><th>Rôle</th><th>Profil</th><th>Accès</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Client</td>
+      <td>Parieur souhaitant recharger son compte de jeu ou retirer ses gains via Orange Money</td>
+      <td>Dépôt, Retrait, Historique des transactions, Tableau de bord personnel</td>
+    </tr>
+    <tr>
+      <td class="feature">Agent</td>
+      <td>Opérateur local qui exécute physiquement les transactions pour le compte des clients</td>
+      <td>Liste des commandes en attente, acceptation, traitement et clôture des commandes</td>
+    </tr>
+    <tr>
+      <td class="feature">Administrateur</td>
+      <td>Gestionnaire de la plateforme — supervision globale et gestion des agents</td>
+      <td>Tableau de bord KPIs, toutes les transactions, gestion et promotion des agents</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warning-box">
+  <strong>Important :</strong> Un agent est promu depuis un compte client par l'administrateur. Il n'existe pas de processus d'inscription direct en tant qu'agent. L'authentification est identique pour tous les rôles : OTP par SMS.
+</div>
+
+<!-- 4. Ce qui est fait -->
+<div class="section-title">4. Ce qui a déjà été livré — Prototype web</div>
+
+<div class="success-box">
+  <strong>✓ Livraison effectuée :</strong> Un prototype web complet et fonctionnel a été développé et déployé sur Vercel. Il couvre l'intégralité des fonctionnalités prévues pour les trois rôles. Ce prototype sert de base à la conversion en application mobile React Native.
+</div>
+
+<div class="subsection">Écrans livrés (prototype web)</div>
+
+<div class="screen-grid">
+  <div class="screen-card">
+    <div class="sc-title">Module Client <span class="badge-done">✓ Livré</span></div>
+    <ul>
+      <li>Accueil — sélection plateforme & montant</li>
+      <li>Formulaire de dépôt (recharge compte)</li>
+      <li>Formulaire de retrait (Orange Money)</li>
+      <li>Historique des transactions avec filtres</li>
+      <li>Tableau de bord personnel (statistiques)</li>
+    </ul>
+  </div>
+  <div class="screen-card">
+    <div class="sc-title">Module Agent <span class="badge-done">✓ Livré</span></div>
+    <ul>
+      <li>Tableau de bord — commandes en attente/cours</li>
+      <li>Détail d'une commande (accepter/compléter/annuler)</li>
+      <li>Compteurs en temps réel (pending, processing)</li>
+      <li>Filtres par statut (Tout / En attente / En cours)</li>
+    </ul>
+  </div>
+  <div class="screen-card">
+    <div class="sc-title">Module Admin <span class="badge-done">✓ Livré</span></div>
+    <ul>
+      <li>Dashboard KPIs (volumes, agents, transactions)</li>
+      <li>Graphique des volumes sur 7 jours (BarChart)</li>
+      <li>Liste complète des transactions + recherche + filtres</li>
+      <li>Gestion des agents (activer/désactiver/promouvoir)</li>
+    </ul>
+  </div>
+  <div class="screen-card">
+    <div class="sc-title">Authentification <span class="badge-done">✓ Livré</span></div>
+    <ul>
+      <li>Saisie du numéro de téléphone (+226)</li>
+      <li>Vérification OTP par SMS (6 chiffres)</li>
+      <li>Création automatique du profil (nouveau user)</li>
+      <li>Récaptcha invisible (protection anti-spam)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="subsection">Intégrations techniques réalisées</div>
+<ul class="list">
+  <li>Firebase Authentication avec vérification OTP par SMS</li>
+  <li>Firebase Firestore — base de données temps réel (collections users et transactions)</li>
+  <li>Règles de sécurité Firestore configurées par rôle</li>
+  <li>Déploiement continu sur Vercel (HTTPS, domaine personnalisé possible)</li>
+  <li>Interface responsive mobile-first (fonctionne sur navigateur mobile)</li>
+</ul>
+
+<!-- 5. Périmètre mobile -->
+<div class="section-title">5. Périmètre de la conversion mobile</div>
+
+<p>La conversion React Native consiste à transformer le prototype web en une vraie application mobile native, publiée sur les stores officiels. Voici ce que cette phase comprend :</p>
+
+<table>
+  <thead>
+    <tr><th>Élément</th><th>Web (livré)</th><th>Mobile (à faire)</th><th>Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Architecture projet</td>
+      <td>React + Vite + React Router</td>
+      <td>React Native + Expo + React Navigation</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Système de styles</td>
+      <td>Tailwind CSS (classes HTML)</td>
+      <td>StyleSheet / NativeWind (composants RN)</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Navigation</td>
+      <td>React Router DOM (URL)</td>
+      <td>React Navigation (Stack + Tab + Drawer)</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Auth OTP Firebase</td>
+      <td>Récaptcha web + signInWithPhoneNumber</td>
+      <td>Vérification SMS native (Android/iOS)</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Base de données</td>
+      <td>Firebase Firestore (web SDK)</td>
+      <td>Firebase Firestore (React Native SDK)</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Notifications push</td>
+      <td>Non disponible (web)</td>
+      <td>FCM — alertes agents + clients</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Icône & splash screen</td>
+      <td>Favicon web</td>
+      <td>Icônes natives Android/iOS + splash animé</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Publication</td>
+      <td>Vercel (URL web)</td>
+      <td>Google Play Store + Apple App Store</td>
+      <td class="tag"><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Logique métier (hooks)</td>
+      <td>useTransactions, useAuth, formatters</td>
+      <td>Réutilisée à 80 % (logique partagée)</td>
+      <td class="tag"><span class="badge-done">Réutilisé</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 6. Fonctionnalités -->
+<div class="section-title">6. Fonctionnalités détaillées par module</div>
+
+<div class="subsection">6.1 — Module Client</div>
+<table>
+  <thead>
+    <tr><th>Fonctionnalité</th><th>Description détaillée</th><th style="width:80px">Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Accueil & sélection</td>
+      <td>Sélection de la plateforme de paris (1XBET, MELBET, BETWINNER) et saisie du montant via un pavé numérique interactif. Montants rapides prédéfinis (1 000, 2 000, 5 000, 10 000, 25 000, 50 000 FCFA). Affichage du calcul des frais en temps réel.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Dépôt (recharge)</td>
+      <td>Formulaire de dépôt avec saisie de l'ID de compte sur la plateforme de paris. Sélection de l'opérateur mobile. Soumission de la demande → création transaction "en attente". Écran de confirmation avec référence de transaction unique.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Retrait (gains)</td>
+      <td>Formulaire de retrait avec : ID de compte 1XBET/MELBET/BETWINNER, numéro Orange Money destinataire, nom du compte Orange Money, code de retrait généré par la plateforme de paris. Restriction Orange Money uniquement. Instructions détaillées affichées.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Historique</td>
+      <td>Liste des 50 dernières transactions du client avec filtres par type (dépôt/retrait) et par statut (en attente, en cours, terminé, annulé). Affichage : montant, plateforme, opérateur, date, statut coloré.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Tableau de bord</td>
+      <td>Vue personnelle : total dépôts, total retraits, nombre de transactions en attente, 5 dernières transactions. Statistiques globales du compte client.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Notifications push</td>
+      <td>Notification envoyée au client quand sa commande est acceptée par un agent, et quand elle est marquée comme terminée ou annulée.</td>
+      <td><span class="badge-todo">Mobile</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="subsection">6.2 — Module Agent</div>
+<table>
+  <thead>
+    <tr><th>Fonctionnalité</th><th>Description détaillée</th><th style="width:80px">Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Tableau de bord</td>
+      <td>Affichage en temps réel de toutes les commandes en attente (pending) et en cours de traitement (processing). Compteurs par statut. Filtres par onglet : Tout, En attente, En cours. Cartes de commandes extensibles avec détails complets.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Accepter une commande</td>
+      <td>L'agent clique "Accepter" → statut passe de "pending" à "processing" → l'agentId est enregistré dans la transaction. La commande disparaît du pool général et est attribuée à l'agent.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Marquer terminé</td>
+      <td>Après exécution physique de la transaction (envoi Orange Money, recharge compte), l'agent marque la commande comme terminée → statut "completed". Le client est notifié.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Annuler une commande</td>
+      <td>L'agent peut annuler une commande avec saisie obligatoire de la raison. Statut → "cancelled". Note d'annulation enregistrée dans la transaction.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Alerte nouvelles commandes</td>
+      <td>Notification push envoyée à tous les agents actifs dès qu'un client soumet une nouvelle demande de dépôt ou de retrait.</td>
+      <td><span class="badge-todo">Mobile</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="subsection">6.3 — Module Administrateur</div>
+<table>
+  <thead>
+    <tr><th>Fonctionnalité</th><th>Description détaillée</th><th style="width:80px">Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Dashboard KPIs</td>
+      <td>6 indicateurs clés : total des transactions, volume des dépôts (FCFA), volume des retraits (FCFA), transactions complétées, agents actifs, volume total. Graphique en barres des volumes sur les 7 derniers jours.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Gestion transactions</td>
+      <td>Liste de toutes les transactions (100 max par requête). Recherche par nom client, téléphone ou ID de transaction. Filtres croisés par statut et par type. Affichage du volume total complété.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Gestion des agents</td>
+      <td>Liste de tous les agents avec statut (actif/inactif). Statistiques d'agents. Recherche par nom ou téléphone. Actions : activer ou désactiver un agent instantanément. Promotion d'un utilisateur client en agent via son numéro de téléphone.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="subsection">6.4 — Authentification</div>
+<table>
+  <thead>
+    <tr><th>Fonctionnalité</th><th>Description détaillée</th><th style="width:80px">Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Connexion OTP</td>
+      <td>Saisie du numéro de téléphone burkinabé (+226). Envoi d'un code OTP à 6 chiffres par SMS via Firebase Authentication. Vérification du code avec délai de renvoi (60 secondes). Délai d'expiration géré automatiquement.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Création de profil</td>
+      <td>À la première connexion, l'utilisateur saisit son prénom et nom. Un profil est créé automatiquement dans Firestore avec le rôle "client" par défaut. L'administrateur peut ensuite promouvoir l'utilisateur en agent.</td>
+      <td><span class="badge-done">✓ Web</span></td>
+    </tr>
+    <tr>
+      <td class="feature">OTP natif mobile</td>
+      <td>Sur mobile, la vérification OTP Firebase utilise le système natif du téléphone (auto-détection du SMS sur Android, saisie manuelle sur iOS) — plus rapide et plus fiable que la version web.</td>
+      <td><span class="badge-todo">Mobile</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 7. Workflow -->
+<div class="section-title">7. Workflow des transactions</div>
+
+<div class="subsection">Cycle de vie d'une transaction</div>
+<div class="workflow">
+  <div class="wf-step">Client soumet<br><small style="font-weight:400;color:#6b7280">Dépôt / Retrait</small></div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step active">PENDING<br><small style="font-weight:400;opacity:0.8">En attente</small></div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">Agent accepte<br><small style="font-weight:400;color:#6b7280">Prise en charge</small></div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step active">PROCESSING<br><small style="font-weight:400;opacity:0.8">En cours</small></div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">Agent termine<br><small style="font-weight:400;color:#6b7280">Exécuté</small></div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step active">COMPLETED<br><small style="font-weight:400;opacity:0.8">Terminé</small></div>
+</div>
+
+<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+  <div class="wf-step" style="min-width:80px;background:#fef2f2;border-color:#fca5a5;color:#dc2626">CANCELLED<br><small style="font-weight:400">Annulé</small></div>
+  <span style="font-size:12px;color:#555">← Possible depuis PENDING ou PROCESSING si l'agent annule avec motif obligatoire</span>
+</div>
+
+<div class="subsection" style="margin-top:16px">Règles de transition</div>
+<table class="rule-table">
+  <thead>
+    <tr><th>Transition</th><th>Acteur</th><th>Condition</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>pending → processing</td><td>Agent</td><td>L'agent clique "Accepter" depuis son dashboard</td></tr>
+    <tr><td>processing → completed</td><td>Agent</td><td>L'agent clique "Marquer terminé" après exécution physique</td></tr>
+    <tr><td>pending → cancelled</td><td>Agent</td><td>Annulation avec saisie obligatoire de la raison</td></tr>
+    <tr><td>processing → cancelled</td><td>Agent</td><td>Annulation en cours de traitement avec motif obligatoire</td></tr>
+  </tbody>
+</table>
+
+<!-- 8. Règles métier -->
+<div class="section-title">8. Règles métier</div>
+
+<table class="rule-table">
+  <thead>
+    <tr><th>Règle</th><th>Valeur / Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Montant minimum</td><td>500 FCFA</td></tr>
+    <tr><td>Montant maximum</td><td>500 000 FCFA</td></tr>
+    <tr><td>Montants rapides</td><td>1 000 / 2 000 / 5 000 / 10 000 / 25 000 / 50 000 FCFA</td></tr>
+    <tr><td>Frais sur dépôt</td><td>0 % — Gratuit pour le client</td></tr>
+    <tr><td>Frais sur retrait</td><td>1 % du montant (prélevé comme commission)</td></tr>
+    <tr><td>Opérateur retrait</td><td>Orange Money uniquement (Moov Money refusé pour les retraits)</td></tr>
+    <tr><td>Opérateurs dépôt</td><td>Orange Money, Moov Money, Coris Money, Wave</td></tr>
+    <tr><td>Plateformes supportées</td><td>1XBET, MELBET, BETWINNER</td></tr>
+    <tr><td>Raison d'annulation</td><td>Obligatoire — champ texte libre, non vide</td></tr>
+    <tr><td>Historique client</td><td>50 dernières transactions maximum par requête</td></tr>
+    <tr><td>Vue admin transactions</td><td>100 dernières transactions maximum par requête</td></tr>
+    <tr><td>Point de retrait</td><td>L'agent utilise "Express Multi service" sur la plateforme de paris</td></tr>
+    <tr><td>Authentification</td><td>OTP SMS uniquement — numéro burkinabé (+226) obligatoire</td></tr>
+    <tr><td>Rôle par défaut</td><td>Tout nouveau compte = rôle "client" — promotion en agent par admin uniquement</td></tr>
+  </tbody>
+</table>
+
+<!-- 9. Architecture technique -->
+<div class="section-title">9. Architecture technique</div>
+
+<div class="stack-grid">
+  <div class="stack-card">
+    <div class="sc-cat">Frontend Mobile</div>
+    <div class="sc-item">React Native 0.73+</div>
+    <div class="sc-item">Expo SDK 50+</div>
+    <div class="sc-item">React Navigation 6</div>
+    <div class="sc-item">NativeWind (Tailwind RN)</div>
+    <div class="sc-item">Lucide React Native</div>
+    <div class="sc-item">Victory Native (graphiques)</div>
+  </div>
+  <div class="stack-card">
+    <div class="sc-cat">Backend & Auth</div>
+    <div class="sc-item">Firebase Auth (OTP SMS)</div>
+    <div class="sc-item">Firebase Firestore</div>
+    <div class="sc-item">Firebase Cloud Messaging</div>
+    <div class="sc-item">Expo Notifications</div>
+    <div class="sc-item">EAS Build (build cloud)</div>
+  </div>
+  <div class="stack-card">
+    <div class="sc-cat">Outils & Déploiement</div>
+    <div class="sc-item">Google Play Store (Android)</div>
+    <div class="sc-item">Apple App Store (iOS)</div>
+    <div class="sc-item">EAS Submit (publication)</div>
+    <div class="sc-item">Vercel (prototype web)</div>
+    <div class="sc-item">GitHub (versionning)</div>
+  </div>
+</div>
+
+<!-- 10. Firebase -->
+<div class="section-title">10. Base de données Firebase</div>
+
+<div class="subsection">Collection : users</div>
+<table>
+  <thead><tr><th>Champ</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>uid</td><td>string (clé)</td><td>Identifiant Firebase unique de l'utilisateur</td></tr>
+    <tr><td>phone</td><td>string</td><td>Numéro de téléphone formaté (+226XXXXXXXX)</td></tr>
+    <tr><td>name</td><td>string</td><td>Prénom et nom de l'utilisateur</td></tr>
+    <tr><td>role</td><td>"client" | "agent" | "admin"</td><td>Rôle dans l'application — "client" par défaut</td></tr>
+    <tr><td>active</td><td>boolean</td><td>Compte actif ou désactivé par l'admin</td></tr>
+    <tr><td>balance</td><td>number</td><td>Solde du compte (en FCFA)</td></tr>
+    <tr><td>createdAt</td><td>Timestamp</td><td>Date de création du compte</td></tr>
+    <tr><td>updatedAt</td><td>Timestamp</td><td>Date de dernière modification</td></tr>
+  </tbody>
+</table>
+
+<div class="subsection">Collection : transactions</div>
+<table>
+  <thead><tr><th>Champ</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>string (clé auto)</td><td>Identifiant unique de la transaction (généré par Firestore)</td></tr>
+    <tr><td>type</td><td>"deposit" | "withdrawal"</td><td>Type de transaction : dépôt ou retrait</td></tr>
+    <tr><td>status</td><td>"pending" | "processing" | "completed" | "cancelled"</td><td>Statut courant de la transaction</td></tr>
+    <tr><td>amount</td><td>number</td><td>Montant en FCFA</td></tr>
+    <tr><td>platform</td><td>"1xbet" | "melbet" | "betwinner"</td><td>Plateforme de paris concernée</td></tr>
+    <tr><td>operator</td><td>"orange" | "moov" | "coris" | "wave"</td><td>Opérateur mobile utilisé</td></tr>
+    <tr><td>clientId</td><td>string</td><td>UID du client ayant soumis la demande</td></tr>
+    <tr><td>clientName</td><td>string</td><td>Nom du client au moment de la soumission</td></tr>
+    <tr><td>agentId</td><td>string | null</td><td>UID de l'agent ayant accepté (null si en attente)</td></tr>
+    <tr><td>accountId</td><td>string</td><td>ID du compte client sur la plateforme de paris</td></tr>
+    <tr><td>phone</td><td>string</td><td>Numéro Orange Money destinataire (retraits)</td></tr>
+    <tr><td>accountName</td><td>string</td><td>Nom du compte Orange Money destinataire (retraits)</td></tr>
+    <tr><td>withdrawCode</td><td>string</td><td>Code de retrait généré par la plateforme (retraits)</td></tr>
+    <tr><td>note</td><td>string | null</td><td>Raison de l'annulation (si annulé)</td></tr>
+    <tr><td>createdAt</td><td>Timestamp</td><td>Date et heure de création de la demande</td></tr>
+    <tr><td>updatedAt</td><td>Timestamp</td><td>Date et heure de la dernière mise à jour du statut</td></tr>
+  </tbody>
+</table>
+
+<!-- 11. Livrables -->
+<div class="section-title">11. Livrables et planning prévisionnel</div>
+
+<table>
+  <thead>
+    <tr><th style="width:36px">Ph.</th><th>Livrable</th><th style="width:130px">Délai estimé</th><th style="width:80px">Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="font-weight:700;color:#9ca3af">1</td>
+      <td><strong>Prototype web fonctionnel</strong> — Toutes les interfaces (client, agent, admin), Firebase Auth OTP, Firestore temps réel, déployé sur Vercel</td>
+      <td>Livré</td>
+      <td><span class="badge-done">✓ Livré</span></td>
+    </tr>
+    <tr>
+      <td style="font-weight:700;color:#9ca3af">2</td>
+      <td><strong>Architecture React Native</strong> — Projet Expo configuré, React Navigation, thème natif, splash screen, icônes Android & iOS</td>
+      <td>Semaine 1–2</td>
+      <td><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td style="font-weight:700;color:#9ca3af">3</td>
+      <td><strong>17 écrans convertis</strong> — Tous les écrans web reconvertis en composants React Native natifs avec navigation et gestures mobiles</td>
+      <td>Semaine 3–5</td>
+      <td><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td style="font-weight:700;color:#9ca3af">4</td>
+      <td><strong>Firebase mobile + notifications</strong> — Auth OTP natif, Firestore RN, Push Notifications FCM pour agents et clients</td>
+      <td>Semaine 6–7</td>
+      <td><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td style="font-weight:700;color:#9ca3af">5</td>
+      <td><strong>Application publiée sur les stores</strong> — Tests complets Android + iOS, builds de production, publication Google Play Store et Apple App Store</td>
+      <td>Semaine 8–9</td>
+      <td><span class="badge-todo">À faire</span></td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td><strong>Documentation & formation</strong> — Guide utilisateur PDF (client, agent, admin), formation d'une journée, corrections de bugs (2 mois)</td>
+      <td>À la livraison</td>
+      <td><span class="badge-todo">Inclus</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="info-box" style="margin-top:16px">
+  <strong>Note sur le planning :</strong> Le délai total estimé est de <strong>9 semaines</strong> à compter de la signature du contrat et du versement de l'acompte. Ce délai peut varier selon les délais d'approbation des stores (Google Play : 1–3 jours, Apple App Store : 1–7 jours) et la disponibilité du client pour les phases de recette.
+</div>
+
+<div class="footer">
+  Cahier des Charges N° CDC-EASYPAY-2026-001 — EasyPay BF | 19 juin 2026 | WOUBI ABDOUL AZIZ — woubiaziz@gmail.com — +226 54 12 56 37 | Document confidentiel
+</div>
+
+</div>
+</body>
+</html>

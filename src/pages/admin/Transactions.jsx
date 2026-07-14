@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   Search,
-  Filter,
-  Download,
   AlertCircle,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
@@ -28,15 +26,53 @@ const TYPE_FILTERS = [
   { label: 'Retraits', value: 'withdrawal' },
 ];
 
+// Opérateurs réellement utilisés dans les transactions (AGENT_NUMBERS couvre
+// à la fois les dépôts et le seul opérateur de retrait, Orange Money — pas
+// besoin de fusionner avec OPERATORS qui contient des entrées jamais produites
+// par l'app et qui dupliquaient certains noms).
+const ALL_OPERATORS = [
+  { label: 'Tous', value: null },
+  ...AGENT_NUMBERS.map(o => ({ label: `${o.logo} ${o.name}`, value: o.id })),
+];
+
+// Badge opérateur coloré
+function OperatorBadge({ operator }) {
+  if (!operator) return null;
+  const colors = {
+    orange:  'bg-orange-500/15 text-orange-400 border-orange-500/20',
+    telmob:  'bg-red-500/15 text-red-400 border-red-500/20',
+    telecel: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+    moov:    'bg-blue-600/15 text-blue-300 border-blue-600/20',
+    coris:   'bg-green-600/15 text-green-400 border-green-600/20',
+    wave:    'bg-sky-500/15 text-sky-400 border-sky-500/20',
+  };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[operator.id] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+      {operator.logo} {operator.name}
+    </span>
+  );
+}
+
 export default function AdminTransactions({ initialType = null }) {
   const { transactions, loading } = useAdminTransactions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(initialType);
+  const [operatorFilter, setOperatorFilter] = useState(null);
+
+  // Les liens "Transactions / Dépôts / Retraits" pointent vers ce même
+  // composant avec juste un `initialType` différent ; React ne le remonte
+  // pas lors d'une navigation interne, donc on resynchronise explicitement
+  // le filtre à chaque changement de route au lieu de compter sur la valeur
+  // initiale de useState (qui n'est appliquée qu'au tout premier montage).
+  useEffect(() => {
+    setTypeFilter(initialType);
+  }, [initialType]);
 
   const filtered = transactions.filter((tx) => {
     if (statusFilter && tx.status !== statusFilter) return false;
     if (typeFilter && tx.type !== typeFilter) return false;
+    if (operatorFilter && tx.operator !== operatorFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -78,30 +114,27 @@ export default function AdminTransactions({ initialType = null }) {
         <div className="space-y-2">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.label}
-                onClick={() => setStatusFilter(f.value)}
+              <button key={f.label} onClick={() => setStatusFilter(f.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
-                  ${statusFilter === f.value
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-white'
-                  }`}
-              >
+                  ${statusFilter === f.value ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                 {f.label}
               </button>
             ))}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {TYPE_FILTERS.map((f) => (
-              <button
-                key={f.label}
-                onClick={() => setTypeFilter(f.value)}
+              <button key={f.label} onClick={() => setTypeFilter(f.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
-                  ${typeFilter === f.value
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-white'
-                  }`}
-              >
+                  ${typeFilter === f.value ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {ALL_OPERATORS.map((f) => (
+              <button key={f.label} onClick={() => setOperatorFilter(f.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
+                  ${operatorFilter === f.value ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                 {f.label}
               </button>
             ))}
@@ -163,9 +196,9 @@ export default function AdminTransactions({ initialType = null }) {
                         </span>
                         <span className="text-gray-600 text-xs">{formatTxId(tx.id)}</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {operator && <OperatorBadge operator={operator} />}
                         {phone && <span className="text-gray-500 text-xs">{phone}</span>}
-                        {operator && <><span className="text-gray-600 text-xs">•</span><span className="text-gray-500 text-xs">{operator.logo} {operator.name}</span></>}
                         <span className="text-gray-600 text-xs">•</span>
                         <span className="text-gray-600 text-xs">{tx.platform?.toUpperCase()}</span>
                         <span className="text-gray-600 text-xs">•</span>

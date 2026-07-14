@@ -50,14 +50,14 @@ export default function InstallPrompt() {
         {/* Header */}
         <div className="flex items-start gap-3 p-4 pb-3">
           {/* Icône app */}
-          <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-            <span className="text-white font-black text-2xl">E</span>
+          <div className="w-14 h-14 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden">
+            <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="font-bold text-gray-900 text-sm leading-tight">Installer EasyPay BF</p>
+                <p className="font-bold text-gray-900 text-sm leading-tight">Installer ApollonPay</p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <Smartphone className="w-3 h-3 text-gray-400" />
                   <p className="text-gray-500 text-xs">Application Mobile</p>
@@ -80,7 +80,7 @@ export default function InstallPrompt() {
             Accès instantané
           </span>
           <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
-            <Smartphone className="w-3 h-3 text-blue-500" />
+            <Smartphone className="w-3 h-3 text-primary-500" />
             Hors connexion
           </span>
         </div>
@@ -95,7 +95,7 @@ export default function InstallPrompt() {
           <button
             onClick={handleInstall}
             disabled={installing}
-            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-3 px-4 rounded-xl transition-colors disabled:opacity-60"
+            className="flex-1 flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm py-3 px-4 rounded-xl transition-colors disabled:opacity-60"
           >
             <Download className="w-4 h-4" />
             {installing ? 'Installation...' : 'Installer'}

@@ -1,11 +1,11 @@
 {
-  "name": "EasyPay BF",
-  "short_name": "EasyPay",
+  "name": "ApollonPay",
+  "short_name": "ApollonPay",
   "description": "Dépôt & Retrait Paris Sportifs au Burkina Faso",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "theme_color": "#3a8015",
   "orientation": "portrait",
   "lang": "fr",
   "icons": [

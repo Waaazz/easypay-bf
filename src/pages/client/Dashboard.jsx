@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDownCircle,
@@ -10,7 +10,9 @@ import {
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import TransactionCard from '../../components/TransactionCard';
+import TransactionDetailModal from '../../components/TransactionDetailModal';
 import { useClientTransactions } from '../../hooks/useTransactions';
+import { useAuth } from '../../hooks/useAuth';
 import { formatCFA } from '../../utils/formatters';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -28,8 +30,9 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 export default function ClientDashboard() {
-  const userProfile = null;
+  const { userProfile } = useAuth();
   const { transactions, loading } = useClientTransactions();
+  const [selectedTx, setSelectedTx] = useState(null);
 
   const completedTx = transactions.filter((t) => t.status === 'completed');
   const pendingTx = transactions.filter((t) => t.status === 'pending' || t.status === 'processing');
@@ -144,12 +147,14 @@ export default function ClientDashboard() {
           ) : (
             <div className="space-y-3">
               {recentTransactions.map((tx) => (
-                <TransactionCard key={tx.id} transaction={tx} />
+                <TransactionCard key={tx.id} transaction={tx} onClick={() => setSelectedTx(tx)} />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <TransactionDetailModal transaction={selectedTx} onClose={() => setSelectedTx(null)} />
     </Layout>
   );
 }

@@ -27,15 +27,15 @@ function ProgressBar({ step }) {
         <React.Fragment key={label}>
           <div className="flex flex-col items-center gap-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all
-              ${i <= active ? 'bg-[#1e3a8a] text-white' : 'bg-gray-200 text-gray-400'}`}>
+              ${i <= active ? 'bg-[#316516] text-white' : 'bg-gray-200 text-gray-400'}`}>
               {i < active ? <Check className="w-3.5 h-3.5" /> : i + 1}
             </div>
-            <span className={`text-[10px] text-center leading-tight ${i <= active ? 'text-[#1e3a8a] font-medium' : 'text-gray-400'}`}>
+            <span className={`text-[10px] text-center leading-tight ${i <= active ? 'text-[#316516] font-medium' : 'text-gray-400'}`}>
               {label}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`h-0.5 w-5 mb-4 rounded transition-all ${i < active ? 'bg-[#1e3a8a]' : 'bg-gray-200'}`} />
+            <div className={`h-0.5 w-5 mb-4 rounded transition-all ${i < active ? 'bg-[#316516]' : 'bg-gray-200'}`} />
           )}
         </React.Fragment>
       ))}
@@ -51,7 +51,7 @@ function Header({ title, onBack }) {
         className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">
         <ArrowLeft className="w-5 h-5 text-gray-700" />
       </button>
-      <h1 className="flex-1 text-center text-base font-bold text-[#1e3a8a]">{title}</h1>
+      <h1 className="flex-1 text-center text-base font-bold text-[#316516]">{title}</h1>
       <div className="w-9" />
     </div>
   );
@@ -63,8 +63,8 @@ function AmountCard({ amount }) {
     <div className="bg-gray-100 rounded-2xl p-4 text-center">
       <p className="text-gray-500 text-sm mb-2">Montant à retirer</p>
       <div className="flex items-center justify-center gap-3">
-        <Wallet className="w-7 h-7 text-[#1e3a8a]" />
-        <span className="text-3xl font-bold text-[#1e3a8a]">{amount.toLocaleString('fr-FR')} FCFA</span>
+        <Wallet className="w-7 h-7 text-[#316516]" />
+        <span className="text-3xl font-bold text-[#316516]">{amount.toLocaleString('fr-FR')} FCFA</span>
       </div>
     </div>
   );
@@ -75,17 +75,17 @@ function FeeBox({ amount }) {
   const fee = calcFee(amount);
   const net = calcNet(amount);
   return (
-    <div className="bg-[#1e3a8a] rounded-2xl p-4 space-y-2">
+    <div className="bg-[#316516] rounded-2xl p-4 space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-blue-200">Montant demandé</span>
+        <span className="text-primary-200">Montant demandé</span>
         <span className="text-white font-semibold">{amount.toLocaleString('fr-FR')} FCFA</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="text-blue-200">Frais ({FEES.withdrawal * 100}%)</span>
+        <span className="text-primary-200">Frais ({FEES.withdrawal * 100}%)</span>
         <span className="text-red-300 font-semibold">- {fee.toLocaleString('fr-FR')} FCFA</span>
       </div>
       <div className="border-t border-white/20 pt-2 flex justify-between">
-        <span className="text-blue-100 font-semibold">Vous recevrez</span>
+        <span className="text-primary-100 font-semibold">Vous recevrez</span>
         <span className="text-yellow-300 font-bold text-lg">{net.toLocaleString('fr-FR')} FCFA</span>
       </div>
     </div>
@@ -104,7 +104,7 @@ function Field({ label, icon: Icon, value, onChange, placeholder, type = 'text',
         </div>
         <input type={type} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" />
+          className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all" />
       </div>
     </div>
   );
@@ -115,7 +115,7 @@ function SummaryRow({ label, value, highlight }) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
       <span className="text-gray-500 text-sm">{label}</span>
-      <span className={`text-sm font-semibold ${highlight ? 'text-[#1e3a8a]' : 'text-gray-800'}`}>{value}</span>
+      <span className={`text-sm font-semibold ${highlight ? 'text-[#316516]' : 'text-gray-800'}`}>{value}</span>
     </div>
   );
 }
@@ -207,7 +207,7 @@ export default function Withdrawal() {
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
         <button onClick={() => next(() => !accountId.trim() && 'Veuillez entrer votre ID de compte.')}
-          className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
           Continuer <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -247,7 +247,7 @@ export default function Withdrawal() {
           if (!phone.replace(/\s/g, '') || phone.replace(/\s/g, '').length < 8) return 'Numéro Orange Money invalide (8 chiffres).';
           if (!accountName.trim()) return 'Veuillez entrer le nom du titulaire.';
         })}
-          className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
           Continuer <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -282,7 +282,7 @@ export default function Withdrawal() {
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
         <button onClick={() => next(() => !withdrawCode.trim() && 'Veuillez entrer le code de retrait.')}
-          className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
           Continuer <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -340,7 +340,7 @@ export default function Withdrawal() {
           {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
           <button onClick={handleConfirm} disabled={submitting}
-            className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
+            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
             {submitting
               ? <RefreshCw className="w-5 h-5 animate-spin" />
               : <><CheckCircle className="w-5 h-5" /> Confirmer le retrait</>}
@@ -398,21 +398,21 @@ export default function Withdrawal() {
           </div>
 
           {/* Récapitulatif */}
-          <div className="bg-[#1e3a8a] rounded-2xl p-5 text-white space-y-2">
+          <div className="bg-[#316516] rounded-2xl p-5 text-white space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Vous recevrez</span>
+              <span className="text-primary-200">Vous recevrez</span>
               <span className="font-bold text-yellow-300 text-base">{calcNet(amount).toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Sur le numéro</span>
+              <span className="text-primary-200">Sur le numéro</span>
               <span className="font-bold">🟠 {phone}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Titulaire</span>
+              <span className="text-primary-200">Titulaire</span>
               <span className="font-bold">{accountName}</span>
             </div>
             <div className="flex justify-between text-sm items-center">
-              <span className="text-blue-200">Référence</span>
+              <span className="text-primary-200">Référence</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold">#{txId.slice(0, 12).toUpperCase()}</span>
                 <CopyBtn value={txId.slice(0, 12).toUpperCase()} />
@@ -457,7 +457,7 @@ export default function Withdrawal() {
           <p className="text-gray-800 font-mono font-bold mt-1">#{txId.slice(0, 12).toUpperCase()}</p>
         </div>
         <button onClick={() => navigate('/')}
-          className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl transition-all">
+          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl transition-all">
           Retour à l'accueil
         </button>
       </div>

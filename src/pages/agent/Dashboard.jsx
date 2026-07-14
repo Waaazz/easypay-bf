@@ -3,16 +3,17 @@ import {
   Inbox, CheckCircle, XCircle, Clock,
   ArrowDownCircle, ArrowUpCircle, RefreshCw,
   AlertCircle, Phone, User, ChevronDown, ChevronUp,
-  Wifi, WifiOff,
+  Wifi, WifiOff, BellRing,
 } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase/config';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
 import { useAgentTransactions, useTransactionActions, setAgentAvailability } from '../../hooks/useTransactions';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import {
+  isNotificationSupported, getNotificationPermission, requestNotificationPermission,
+} from '../../utils/notifications';
 
 function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
   const [expanded, setExpanded] = useState(false);
@@ -185,31 +186,27 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
 export default function AgentDashboard() {
   const { transactions, loading } = useAgentTransactions();
   const { acceptOrder, completeOrder, cancelOrder } = useTransactionActions();
-  const { userProfile } = useAuth();
+  const { userProfile, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('pending');
 
   const agentName = userProfile?.name || 'Agent';
 
-  // ── Disponibilité en temps réel ────────────────────────────────────────────
-  const [isAvailable, setIsAvailable]           = useState(false);
+  // ── Disponibilité ─────────────────────────────────────────────────────────
   const [toggling, setToggling]                 = useState(false);
   const [availabilityError, setAvailabilityError] = useState('');
 
-  useEffect(() => {
-    if (!userProfile?.uid) return;
-    const unsub = onSnapshot(doc(db, 'config', 'activeNumbers'), (snap) => {
-      if (!snap.exists()) { setIsAvailable(false); return; }
-      const config = snap.data();
-      const ops = userProfile.operators || {};
-      const active = Object.keys(ops).some(opId => {
-        const raw = config[opId];
-        const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-        return list.some(a => a.agentId === userProfile.uid);
-      });
-      setIsAvailable(active);
-    });
-    return () => unsub();
-  }, [userProfile?.uid, userProfile?.operators]);
+  const isAvailable = !!userProfile?.available;
+
+  // ── Notifications navigateur ─────────────────────────────────────────────
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
+  const [requestingNotif, setRequestingNotif] = useState(false);
+
+  const handleEnableNotifications = async () => {
+    setRequestingNotif(true);
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    setRequestingNotif(false);
+  };
 
   const handleToggleAvailability = async () => {
     if (!userProfile) return;
@@ -221,7 +218,8 @@ export default function AgentDashboard() {
     setToggling(true);
     setAvailabilityError('');
     try {
-      await setAgentAvailability(userProfile.uid, agentName, ops, !isAvailable);
+      await setAgentAvailability(userProfile.uid, !isAvailable);
+      await refreshProfile();
     } catch (e) {
       setAvailabilityError(e.message || 'Erreur de mise à jour.');
     }
@@ -244,6 +242,36 @@ export default function AgentDashboard() {
             Bonjour <span className="text-white font-medium">{agentName}</span>
           </p>
         </div>
+
+        {/* ── Bannière notifications ───────────────────────────────────── */}
+        {isNotificationSupported() && notifPermission === 'default' && (
+          <div className="rounded-2xl p-4 border-2 border-primary-500/30 bg-primary-500/10 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+              <BellRing className="w-5 h-5 text-primary-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-primary-300">Activez les notifications</p>
+              <p className="text-gray-400 text-xs mt-0.5">
+                Soyez alerté (son + notification) dès qu'une nouvelle commande arrive.
+              </p>
+            </div>
+            <button
+              onClick={handleEnableNotifications}
+              disabled={requestingNotif}
+              className="flex-shrink-0 px-3 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold transition-all disabled:opacity-60"
+            >
+              {requestingNotif ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Activer'}
+            </button>
+          </div>
+        )}
+        {isNotificationSupported() && notifPermission === 'denied' && (
+          <div className="rounded-2xl p-3 border border-gray-700 bg-gray-800/50 flex items-center gap-3">
+            <BellRing className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <p className="text-gray-500 text-xs">
+              Notifications bloquées par le navigateur. Autorisez-les dans les paramètres du site pour être alerté des nouvelles commandes.
+            </p>
+          </div>
+        )}
 
         {/* ── Toggle disponibilité ─────────────────────────────────────── */}
         <div className={`rounded-2xl p-4 border-2 transition-all duration-300

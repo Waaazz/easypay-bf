@@ -5,20 +5,20 @@ import {
   where,
   onSnapshot,
   doc,
-  getDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
   Users, UserCheck, UserX, Shield, Phone,
-  RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil, Zap,
-  ArrowDownCircle, ArrowUpCircle, TrendingUp,
+  RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil,
+  ArrowDownCircle, ArrowUpCircle, TrendingUp, Trash2, AlertTriangle,
+  Wifi, WifiOff,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDate, formatCFA } from '../../utils/formatters';
-import { setActiveAgent } from '../../hooks/useTransactions';
 
 const OPERATOR_LABELS = {
   orange:  { emoji: '🟠', name: 'Orange Money' },
@@ -28,28 +28,52 @@ const OPERATOR_LABELS = {
 
 const RANK_MEDAL = ['🥇', '🥈', '🥉'];
 
+// ─── Modal confirmation suppression ──────────────────────────────────────────
+function DeleteAgentModal({ agent, onClose, onConfirm }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    await onConfirm(agent.uid);
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="card w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold">Supprimer l'agent</h3>
+            <p className="text-gray-500 text-xs">Cette action est irréversible</p>
+          </div>
+        </div>
+        <p className="text-gray-400 text-sm mb-5">
+          Voulez-vous vraiment supprimer <span className="text-white font-medium">{agent.name}</span> ?
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
+          <button onClick={handleDelete} disabled={loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Supprimer</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Carte agent ─────────────────────────────────────────────────────────────
-function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, rank }) {
-  const [loading, setLoading]     = useState(false);
-  const [activating, setActivating] = useState(null); // operatorId en cours
+function AgentCard({ agent, onToggle, onEdit, onDelete, stats, rank }) {
+  const [loading, setLoading] = useState(false);
 
   const handleToggle = async () => {
     setLoading(true);
     await onToggle(agent.uid, !agent.active);
     setLoading(false);
-  };
-
-  const [activateError, setActivateError] = useState('');
-
-  const handleActivate = async (opId, number) => {
-    setActivating(opId);
-    setActivateError('');
-    try {
-      await onActivate(opId, agent.uid, agent.name || 'Agent', number);
-    } catch (e) {
-      setActivateError(e.message || 'Erreur lors de l\'activation');
-    }
-    setActivating(null);
   };
 
   const operatorEntries = Object.entries(agent.operators || {}).filter(([, v]) => v);
@@ -73,6 +97,15 @@ function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, r
               ? <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/20">Actif</span>
               : <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">Inactif</span>
             }
+            {agent.active && (
+              agent.available
+                ? <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 flex items-center gap-1">
+                    <Wifi className="w-3 h-3" /> Disponible
+                  </span>
+                : <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full border border-gray-700 flex items-center gap-1">
+                    <WifiOff className="w-3 h-3" /> Indisponible
+                  </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 mt-1">
@@ -80,7 +113,7 @@ function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, r
             <span className="text-gray-400 text-sm">{agent.phone}</span>
           </div>
 
-          {/* Numéros opérateurs + bouton Activer */}
+          {/* Numéros opérateurs */}
           <div className="mt-2 space-y-1.5">
             {missingOperators ? (
               <button onClick={() => onEdit(agent)}
@@ -88,42 +121,15 @@ function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, r
                 <Pencil className="w-3 h-3" /> Ajouter les numéros Mobile Money
               </button>
             ) : (
-              operatorEntries.map(([opId, number]) => {
-                const raw = activeConfig?.[opId];
-                const activeList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-                const isCurrentlyActive = activeList.some(a => a.agentId === agent.uid);
-                return (
-                  <div key={opId} className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-lg">
-                      {OPERATOR_LABELS[opId]?.emoji} {number}
-                    </span>
-                    <button
-                      onClick={() => handleActivate(opId, number)}
-                      disabled={activating === opId}
-                      className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all
-                        ${isCurrentlyActive
-                          ? 'text-green-400 bg-green-400/10 hover:bg-red-400/10 hover:text-red-400 border-green-400/20 hover:border-red-400/20'
-                          : 'text-primary-400 bg-primary-400/10 hover:bg-primary-400/20 border-primary-400/20'
-                        }`}>
-                      {activating === opId
-                        ? <RefreshCw className="w-3 h-3 animate-spin" />
-                        : isCurrentlyActive
-                          ? <><Zap className="w-3 h-3" /> Actif · Désactiver</>
-                          : <><Zap className="w-3 h-3" /> Activer</>
-                      }
-                    </button>
-                    {activeList.length > 1 && (
-                      <span className="text-xs text-gray-500">{activeList.length} agents</span>
-                    )}
-                  </div>
-                );
-              })
+              operatorEntries.map(([opId, number]) => (
+                <div key={opId} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-lg">
+                    {OPERATOR_LABELS[opId]?.emoji} {number}
+                  </span>
+                </div>
+              ))
             )}
           </div>
-
-          {activateError && (
-            <p className="text-red-400 text-xs mt-1 bg-red-400/10 px-2 py-1 rounded-lg">{activateError}</p>
-          )}
 
           {/* Stats de performance */}
           <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-800/60">
@@ -150,10 +156,14 @@ function AgentCard({ agent, onToggle, onEdit, activeConfig, onActivate, stats, r
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-3 mt-2">
             <button onClick={() => onEdit(agent)}
               className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
               <Pencil className="w-3 h-3" /> Modifier numéros
+            </button>
+            <button onClick={() => onDelete(agent)}
+              className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors">
+              <Trash2 className="w-3 h-3" /> Supprimer
             </button>
             {agent.createdAt && (
               <span className="text-gray-700 text-xs">· Inscrit le {formatDate(agent.createdAt)}</span>
@@ -394,26 +404,19 @@ function CreateAgentModal({ onClose }) {
 
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function AdminAgents() {
-  const [agents,       setAgents]       = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [search,       setSearch]       = useState('');
-  const [showCreate,   setShowCreate]   = useState(false);
-  const [editingAgent, setEditingAgent] = useState(null);
-  const [activeConfig, setActiveConfig] = useState(null);
-  const [agentStats,   setAgentStats]   = useState({}); // { [uid]: { deposits, withdrawals, totalAmount } }
+  const [agents,        setAgents]        = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState('');
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [editingAgent,  setEditingAgent]  = useState(null);
+  const [deletingAgent, setDeletingAgent] = useState(null);
+  const [agentStats,    setAgentStats]    = useState({});
 
   useEffect(() => {
     const q = query(collection(db, 'users'), where('role', '==', 'agent'));
     return onSnapshot(q, (snap) => {
       setAgents(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
       setLoading(false);
-    });
-  }, []);
-
-  // Écoute la config des numéros actifs
-  useEffect(() => {
-    return onSnapshot(doc(db, 'config', 'activeNumbers'), snap => {
-      setActiveConfig(snap.exists() ? snap.data() : null);
     });
   }, []);
 
@@ -438,8 +441,8 @@ export default function AdminAgents() {
     await updateDoc(doc(db, 'users', uid), { active, updatedAt: serverTimestamp() });
   };
 
-  const handleActivate = async (opId, agentId, agentName, number) => {
-    await setActiveAgent(opId, agentId, agentName, number);
+  const deleteAgent = async (uid) => {
+    await deleteDoc(doc(db, 'users', uid));
   };
 
   const filtered = agents
@@ -543,8 +546,7 @@ export default function AdminAgents() {
               <AgentCard key={agent.uid} agent={agent}
                 onToggle={toggleAgent}
                 onEdit={setEditingAgent}
-                activeConfig={activeConfig}
-                onActivate={handleActivate}
+                onDelete={setDeletingAgent}
                 stats={agentStats[agent.uid]}
                 rank={index + 1} />
             ))}
@@ -557,6 +559,13 @@ export default function AdminAgents() {
         <EditOperatorsModal
           agent={editingAgent}
           onClose={() => setEditingAgent(null)}
+        />
+      )}
+      {deletingAgent && (
+        <DeleteAgentModal
+          agent={deletingAgent}
+          onClose={() => setDeletingAgent(null)}
+          onConfirm={deleteAgent}
         />
       )}
     </Layout>

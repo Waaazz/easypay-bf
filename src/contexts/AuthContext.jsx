@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
-  signInWithPhoneNumber,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInAnonymously,
-  RecaptchaVerifier,
   signOut,
   onAuthStateChanged,
+  linkWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, secondaryAuth } from '../firebase/config';
@@ -17,13 +17,28 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [confirmationResult, setConfirmationResult] = useState(null);
   // Empêche le re-login anonyme automatique pendant une connexion intentionnelle
   const signingIn = React.useRef(false);
+  // uid de la session réelle (non anonyme) en cours, dès qu'on en établit une —
+  // mis à jour de façon synchrone (avant tout onAuthStateChanged) par les
+  // fonctions de connexion ci-dessous. Sert à ignorer les évènements anonymes
+  // fantômes que Firebase peut émettre pendant/après une connexion réelle,
+  // dans un ordre non garanti (voir onAuthStateChanged plus bas).
+  const realUidRef = React.useRef(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        if (firebaseUser.isAnonymous) {
+          // Une session réelle est déjà (ou est en train d'être) établie :
+          // cet évènement anonyme est fantôme/obsolète, on l'ignore entièrement
+          // (y compris la mise à jour du profil) pour ne rien écraser.
+          if (realUidRef.current) {
+            return;
+          }
+        } else {
+          realUidRef.current = firebaseUser.uid;
+        }
         setUser(firebaseUser);
         try {
           const profile = await fetchUserProfile(firebaseUser.uid);
@@ -33,6 +48,9 @@ export function AuthProvider({ children }) {
         }
         setLoading(false);
       } else {
+        realUidRef.current = null;
+        setUser(null);
+        setUserProfile(null);
         // Si une connexion est en cours, ne pas relancer signInAnonymously
         if (signingIn.current) {
           setLoading(false);
@@ -60,78 +78,6 @@ export function AuthProvider({ children }) {
     return null;
   };
 
-  const clearRecaptcha = () => {
-    try {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-      }
-    } catch (_) {}
-    window.recaptchaVerifier = null;
-    // Remove all recaptcha iframes/badges injected by Firebase
-    document.querySelectorAll('iframe[src*="recaptcha"]').forEach(el => el.remove());
-    document.querySelectorAll('.grecaptcha-badge').forEach(el => el.remove());
-  };
-
-  const getRecaptchaVerifier = () => {
-    if (window.recaptchaVerifier) return window.recaptchaVerifier;
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {},
-      'expired-callback': clearRecaptcha,
-    });
-    return window.recaptchaVerifier;
-  };
-
-  const sendOTP = async (phoneNumber) => {
-    clearRecaptcha();
-    try {
-      const verifier = getRecaptchaVerifier();
-      const result = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      setConfirmationResult(result);
-      return { success: true };
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      clearRecaptcha();
-      return { success: false, error: error.message };
-    }
-  };
-
-  const verifyOTP = async (otp) => {
-    if (!confirmationResult) {
-      return { success: false, error: 'Veuillez demander un code OTP d\'abord.' };
-    }
-    try {
-      const result = await confirmationResult.confirm(otp);
-      const firebaseUser = result.user;
-
-      // Check if user profile exists, create if not
-      const docRef = doc(db, 'users', firebaseUser.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        const newProfile = {
-          uid: firebaseUser.uid,
-          phone: firebaseUser.phoneNumber,
-          name: '',
-          role: 'client',
-          balance: 0,
-          active: true,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(docRef, newProfile);
-        setUserProfile(newProfile);
-      } else {
-        setUserProfile({ uid: firebaseUser.uid, ...docSnap.data() });
-      }
-
-      return { success: true, user: firebaseUser };
-    } catch (error) {
-      console.error('Error verifying OTP:', error);
-      return { success: false, error: 'Code OTP invalide. Veuillez réessayer.' };
-    }
-  };
-
   const updateUserProfile = async (data) => {
     if (!user) return { success: false, error: 'Non authentifié' };
     try {
@@ -146,18 +92,104 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ── Connexion agent (numéro + mot de passe) ─────────────────────────────
-  const phoneToEmail = (phone) => {
+  // ── Emails synthétiques par numéro de téléphone, namespacés par rôle ────
+  const PHONE_EMAIL_DOMAIN = { agent: 'easypay-agent.bf', client: 'easypay-client.bf' };
+  const phoneToEmail = (phone, ns = 'agent') => {
     const digits = phone.replace(/\D/g, '');
     const normalized = digits.startsWith('226') ? digits : `226${digits}`;
-    return `${normalized}@easypay-agent.bf`;
+    return `${normalized}@${PHONE_EMAIL_DOMAIN[ns]}`;
   };
 
   const loginAgent = async (phone, password) => {
-    const email = phoneToEmail(phone);
+    const email = phoneToEmail(phone, 'agent');
     signingIn.current = true;
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      realUidRef.current = result.user.uid;
+      setUser(result.user);
+      signingIn.current = false;
+      return { success: true };
+    } catch {
+      signingIn.current = false;
+      return { success: false, error: 'Numéro ou mot de passe incorrect.' };
+    }
+  };
+
+  // ── Connexion admin (email + mot de passe) ──────────────────────────────
+  const loginAdmin = async (email, password) => {
+    signingIn.current = true;
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      realUidRef.current = result.user.uid;
+      setUser(result.user);
+      signingIn.current = false;
+      return { success: true };
+    } catch {
+      signingIn.current = false;
+      return { success: false, error: 'Email ou mot de passe incorrect.' };
+    }
+  };
+
+  // ── Inscription client (numéro + mot de passe) ──────────────────────────
+  // Si le client navigue déjà en anonyme, on lie le mot de passe à cette
+  // session pour conserver l'UID (et donc l'historique déjà créé en invité).
+  const registerClient = async (name, phone, password) => {
+    const email = phoneToEmail(phone, 'client');
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.startsWith('226') ? digits : `226${digits}`;
+    const formattedPhone = `+${normalized}`;
+
+    signingIn.current = true;
+    try {
+      let uid;
+      if (auth.currentUser?.isAnonymous) {
+        const credential = EmailAuthProvider.credential(email, password);
+        const result = await linkWithCredential(auth.currentUser, credential);
+        uid = result.user.uid;
+        realUidRef.current = uid;
+        setUser(result.user);
+      } else {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        uid = result.user.uid;
+        realUidRef.current = uid;
+        setUser(result.user);
+      }
+
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        name: name.trim(),
+        phone: formattedPhone,
+        email,
+        role: 'client',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      const profile = await fetchUserProfile(uid);
+      setUserProfile(profile);
+      signingIn.current = false;
+      return { success: true };
+    } catch (error) {
+      signingIn.current = false;
+      const msg = ['auth/email-already-in-use', 'auth/credential-already-in-use'].includes(error.code)
+        ? 'Un compte existe déjà avec ce numéro. Connectez-vous plutôt.'
+        : error.code === 'auth/weak-password'
+          ? 'Le mot de passe doit contenir au moins 6 caractères.'
+          : 'Erreur lors de la création du compte.';
+      return { success: false, error: msg };
+    }
+  };
+
+  // ── Connexion client (numéro + mot de passe) ─────────────────────────────
+  const loginClient = async (phone, password) => {
+    const email = phoneToEmail(phone, 'client');
+    signingIn.current = true;
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      realUidRef.current = result.user.uid;
+      setUser(result.user);
+      const profile = await fetchUserProfile(result.user.uid);
+      setUserProfile(profile);
       signingIn.current = false;
       return { success: true };
     } catch {
@@ -169,7 +201,7 @@ export function AuthProvider({ children }) {
   // ── Création compte agent par l'admin ────────────────────────────────────
   // operators = { orange: '07XXXXXX', telmob: '60XXXXXX', telecel: '55XXXXXX' }
   const createAgentAccount = async (name, phone, password, operators = {}) => {
-    const email = phoneToEmail(phone);
+    const email = phoneToEmail(phone, 'agent');
     const digits = phone.replace(/\D/g, '');
     const normalized = digits.startsWith('226') ? digits : `226${digits}`;
     const formattedPhone = `+${normalized}`;
@@ -208,6 +240,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     // Laisse le re-login anonyme se faire normalement après déconnexion
     signingIn.current = false;
+    realUidRef.current = null;
     try {
       await signOut(auth);
     } catch (error) {
@@ -219,9 +252,10 @@ export function AuthProvider({ children }) {
     user,
     userProfile,
     loading,
-    sendOTP,
-    verifyOTP,
     loginAgent,
+    loginAdmin,
+    registerClient,
+    loginClient,
     createAgentAccount,
     logout,
     updateUserProfile,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { History as HistoryIcon, AlertCircle, Filter } from 'lucide-react';
 import Layout from '../../components/Layout';
 import TransactionCard from '../../components/TransactionCard';
+import TransactionDetailModal from '../../components/TransactionDetailModal';
 import { useClientTransactions } from '../../hooks/useTransactions';
 
 const FILTERS = [
@@ -16,6 +17,7 @@ export default function History() {
   const { transactions, loading } = useClientTransactions();
   const [typeFilter, setTypeFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [selectedTx, setSelectedTx] = useState(null);
 
   const filtered = transactions.filter((tx) => {
     if (typeFilter === 'deposit' && tx.type !== 'deposit') return false;
@@ -85,11 +87,13 @@ export default function History() {
         ) : (
           <div className="space-y-3">
             {filtered.map((tx) => (
-              <TransactionCard key={tx.id} transaction={tx} />
+              <TransactionCard key={tx.id} transaction={tx} onClick={() => setSelectedTx(tx)} />
             ))}
           </div>
         )}
       </div>
+
+      <TransactionDetailModal transaction={selectedTx} onClose={() => setSelectedTx(null)} />
     </Layout>
   );
 }

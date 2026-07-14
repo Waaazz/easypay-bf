@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Devis WAA-EASYPAY-2026-001 — EasyPay BF</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}
+.page{max-width:820px;margin:0 auto;padding:40px 48px}
+@media print{
+  .page{padding:20px 28px}
+  .no-print{display:none}
+  .page-break{page-break-before:always}
+}
+.meta-bar{font-size:10px;color:#6b7280;text-align:center;margin-bottom:22px;padding-bottom:10px;border-bottom:1px solid #e5e7eb;font-style:italic}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.header-left h1{font-size:22px;font-weight:800;color:#1a1a1a;letter-spacing:-0.5px}
+.header-left .subtitle{font-style:italic;color:#555;font-size:12px;margin-top:2px}
+.header-left .contact{margin-top:10px;font-size:11.5px;color:#374151;line-height:1.8}
+.header-right{text-align:right}
+.header-right .devis-title{font-size:40px;font-weight:800;color:#1a1a1a;letter-spacing:3px}
+.header-right .ref{font-size:12px;color:#2563eb;font-weight:700;margin-top:6px}
+.header-right .meta{font-size:11.5px;color:#6b7280;margin-top:2px}
+.header-right .client-label{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-top:12px}
+.header-right .client-name{font-size:13px;font-weight:700;color:#1a1a1a;margin-top:2px}
+.header-right .client-loc{font-size:11px;color:#6b7280}
+.separator{height:2px;background:#2563eb;margin:22px 0}
+.section-title{font-size:13px;font-weight:700;color:#2563eb;margin:24px 0 10px;padding-bottom:5px;border-bottom:1px solid #e5e7eb}
+.objet-box{border-left:3px solid #2563eb;padding:14px 18px;background:#f8faff;margin-bottom:6px;line-height:1.75}
+.objet-box p{font-size:12.5px;color:#333;margin-bottom:8px}
+.objet-box p:last-child{margin-bottom:0}
+.intro-text{font-size:12px;color:#555;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px}
+table thead tr{background:#f3f4f6}
+table thead th{padding:8px 12px;text-align:left;font-size:10.5px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.4px}
+table thead th.right{text-align:right}
+table tbody tr{border-bottom:1px solid #f3f4f6}
+table tbody td{padding:10px 12px;color:#374151;vertical-align:top;line-height:1.6}
+table tbody td strong{font-size:12.5px;color:#1a1a1a;display:block;margin-bottom:3px}
+table tbody td.num{width:36px;color:#9ca3af;font-weight:600;font-size:13px}
+table tbody td.amount{text-align:right;font-weight:700;color:#2563eb;white-space:nowrap;font-size:13px}
+table tbody td.right{text-align:right}
+table tfoot tr{background:#1e3a8a}
+table tfoot td{padding:10px 12px;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.5px}
+table tfoot td.right{text-align:right;color:#fff;font-size:13px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+.summary-card{border:1px solid #e5e7eb;border-radius:8px;padding:14px;text-align:center}
+.summary-card .lbl{font-size:9.5px;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;line-height:1.4}
+.summary-card .val{font-size:14px;font-weight:800;color:#1a1a1a}
+.total-box{border:1px solid #e5e7eb;border-radius:8px;padding:18px;text-align:center;margin:12px 0}
+.total-box .tl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px}
+.total-box .tv{font-size:30px;font-weight:800;color:#1a1a1a;margin-top:4px}
+.conditions-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+.cbox{border:1px solid #e5e7eb;border-radius:8px;padding:14px}
+.cbox .ctitle{font-size:12px;font-weight:700;margin-bottom:10px}
+.cbox.inc .ctitle{color:#16a34a}
+.cbox.exc .ctitle{color:#dc2626}
+.cbox ul{list-style:none}
+.cbox ul li{font-size:11.5px;color:#374151;padding:3px 0;display:flex;align-items:flex-start;gap:6px;line-height:1.5}
+.cbox ul li::before{font-size:12px;flex-shrink:0;margin-top:1px}
+.cbox.inc ul li::before{content:'✓';color:#16a34a}
+.cbox.exc ul li::before{content:'✗';color:#dc2626}
+.note-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;margin:14px 0;font-size:11.5px;color:#78350f;line-height:1.6}
+.sig-divider{border-top:1px dashed #d1d5db;margin:22px 0}
+.sig-section{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:8px}
+.sig-block .sl{font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.sig-block .sn{font-size:14px;font-weight:800;color:#1a1a1a}
+.sig-block .st{font-size:12px;color:#555;margin-top:2px}
+.sig-block .sd{font-size:12px;color:#555;margin-top:2px}
+.sig-block .sline{border-top:1px solid #d1d5db;margin-top:44px;padding-top:5px;font-size:10px;color:#9ca3af}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:10px;color:#9ca3af}
+.paym td:first-child{color:#2563eb;font-weight:600}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Meta bar -->
+<div class="meta-bar">Devis | Application Mobile EasyPay BF | Réf. WAA-EASYPAY-2026-001 | 19 juin 2026 | Document confidentiel</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <h1>WOUBI ABDOUL AZIZ</h1>
+    <div class="subtitle">Développeur Full-Stack & Mobile</div>
+    <div class="contact">
+      woubiaziz@gmail.com<br>
+      +226 54 12 56 37 / +226 68 87 71 82<br>
+      Ouagadougou, Burkina Faso<br>
+      Licence en Génie Logiciel — Université Virtuelle du Burkina Faso
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="devis-title">DEVIS</div>
+    <div class="ref">Réf. : WAA-EASYPAY-2026-001</div>
+    <div class="meta">Date : 19 juin 2026</div>
+    <div class="meta">Validité : 30 jours</div>
+    <div class="client-label">CLIENT</div>
+    <div class="client-name">[NOM DU CLIENT]</div>
+    <div class="client-loc">Ouagadougou, Burkina Faso</div>
+  </div>
+</div>
+
+<div class="separator"></div>
+
+<!-- Objet -->
+<div class="section-title">Objet de la prestation</div>
+<div class="objet-box">
+  <p>Développement d'une <strong>application mobile React Native (Android & iOS)</strong> pour <strong>EasyPay BF</strong>, une plateforme de dépôt et de retrait d'argent dédiée aux paris sportifs au Burkina Faso.</p>
+  <p>Un <strong>prototype web complet</strong> a déjà été conçu et livré, couvrant l'ensemble des interfaces clients, agents et administrateurs, avec intégration Firebase (authentification OTP par SMS et base de données temps réel Firestore). Le présent devis porte sur la <strong>conversion de ce prototype en application mobile native</strong> et son déploiement sur Google Play Store (Android) et Apple App Store (iOS).</p>
+  <p>Stack technique : <strong>React Native (Expo) + Firebase Auth OTP + Firestore + FCM (Push Notifications) + React Navigation.</strong></p>
+</div>
+
+<!-- Section 1 : Développement -->
+<div class="section-title">1. Développement — Prix fixe par phase</div>
+<p class="intro-text">Le développement est structuré en <strong>5 phases livrables et indépendantes</strong>. Chaque phase fait l'objet d'une livraison, d'une recette client et d'un paiement partiel.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:36px">Ph.</th>
+      <th>Contenu de la phase</th>
+      <th style="width:130px">Titre</th>
+      <th class="right" style="width:110px">Montant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="num">1</td>
+      <td>
+        <strong>Prototype web — déjà livré ✓</strong>
+        Interfaces client complètes (accueil, dépôt, retrait, historique, tableau de bord), interface agent (gestion des commandes, détail commande), interface admin (statistiques KPIs, transactions, gestion des agents), authentification Firebase OTP par SMS, base de données Firestore en temps réel, déploiement sur Vercel.
+      </td>
+      <td>Prototype web</td>
+      <td class="amount">80 000 FCFA</td>
+    </tr>
+    <tr>
+      <td class="num">2</td>
+      <td>
+        <strong>Architecture React Native & Navigation mobile</strong>
+        Configuration Expo + EAS Build (Android & iOS), mise en place de React Navigation (Stack, Tab, Drawer), système de styles natifs, structure du projet mobile, gestion des spécificités Android/iOS (safe areas, polices système, icônes, splash screen, permissions).
+      </td>
+      <td>Architecture mobile</td>
+      <td class="amount">45 000 FCFA</td>
+    </tr>
+    <tr>
+      <td class="num">3</td>
+      <td>
+        <strong>Conversion des interfaces (17 écrans)</strong>
+        Reconversion de l'intégralité des écrans web en composants natifs React Native : 5 écrans client, 2 écrans agent, 3 écrans admin, 2 écrans d'authentification OTP, écrans de navigation. Adaptation des interactions tactiles, des gestures, du clavier virtuel et du scroll mobile pour une expérience 100 % native.
+      </td>
+      <td>Interfaces mobiles</td>
+      <td class="amount">75 000 FCFA</td>
+    </tr>
+    <tr>
+      <td class="num">4</td>
+      <td>
+        <strong>Firebase Mobile & Notifications Push</strong>
+        Intégration Firebase Auth OTP natif (vérification SMS sur Android & iOS), Firebase Firestore React Native (synchronisation temps réel), Push Notifications via FCM — alertes agents pour nouvelles commandes clients, notifications de statut pour les clients, gestion des permissions mobiles (notifications, réseau, batterie).
+      </td>
+      <td>Firebase & Notifications</td>
+      <td class="amount">40 000 FCFA</td>
+    </tr>
+    <tr>
+      <td class="num">5</td>
+      <td>
+        <strong>Tests, corrections & déploiement stores</strong>
+        Tests fonctionnels sur émulateur Android et appareil réel, tests sur simulateur iOS (Xcode), corrections et optimisations de performance, génération des builds de production signés, publication sur Google Play Store (Android) et Apple App Store (iOS), suivi des processus d'examen et d'approbation.
+      </td>
+      <td>Tests & Déploiement</td>
+      <td class="amount">30 000 FCFA</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="3">Sous-total développement</td>
+      <td class="right">270 000 FCFA</td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- Section 2 : Stores -->
+<div class="section-title">2. Frais de publication stores & infrastructure</div>
+<p class="intro-text">Frais obligatoires pour publier l'application sur les stores officiels. Le compte Google Play est un frais unique ; le compte Apple Developer est un abonnement annuel obligatoire.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Composant</th>
+      <th>Détail</th>
+      <th class="right">Montant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Compte Google Play Developer</strong></td>
+      <td>Frais d'inscription unique — publication Android illimitée (25 $ ≈ 14 750 FCFA) — configuration du compte et de la fiche store incluses</td>
+      <td class="amount">14 750 FCFA</td>
+    </tr>
+    <tr>
+      <td><strong>Compte Apple Developer</strong></td>
+      <td>Abonnement annuel obligatoire pour publier sur l'App Store (99 $/an ≈ 58 410 FCFA) — configuration du compte, certificats et profils de provisionnement inclus</td>
+      <td class="amount">58 410 FCFA</td>
+    </tr>
+    <tr>
+      <td><strong>Firebase Spark Plan</strong></td>
+      <td>Plan gratuit Firebase — suffisant pour la phase de lancement (quota Auth SMS, Firestore et FCM inclus dans le tier gratuit)</td>
+      <td class="amount">0 FCFA</td>
+    </tr>
+    <tr>
+      <td><strong>Configuration & mise en production</strong></td>
+      <td>Génération Keystore Android, certificats iOS, variables d'environnement de production, builds EAS Build signés et prêts à publier</td>
+      <td class="amount">10 000 FCFA</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">Sous-total stores & infrastructure</td>
+      <td class="right">83 160 FCFA</td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- Section 3 : Options -->
+<div class="section-title">3. Options conditionnelles</div>
+<p class="intro-text">Ces suppléments s'appliquent uniquement si les fonctionnalités correspondantes sont confirmées lors de la réunion de cadrage.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Description</th>
+      <th class="right">Supplément</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Notifications push avancées</strong></td>
+      <td>Son personnalisé, badge d'application, historique des notifications in-app, notification de changement de statut de commande pour le client (accepté, terminé, annulé)</td>
+      <td class="amount">10 000 FCFA</td>
+    </tr>
+    <tr>
+      <td><strong>Mode hors-ligne</strong></td>
+      <td>Cache local des données via AsyncStorage, synchronisation automatique au retour de la connexion réseau, gestion des conflits de données</td>
+      <td class="amount">15 000 FCFA</td>
+    </tr>
+    <tr>
+      <td><strong>Authentification biométrique</strong></td>
+      <td>Déverrouillage par empreinte digitale ou Face ID pour les agents et administrateurs (TouchID / FaceID iOS, Fingerprint Android)</td>
+      <td class="amount">12 000 FCFA</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">Maximum toutes options activées</td>
+      <td class="right">37 000 FCFA</td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- Section 4 : Récapitulatif -->
+<div class="section-title">4. Récapitulatif financier</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="lbl">Développement<br>(5 phases)</div>
+    <div class="val">270 000 FCFA</div>
+  </div>
+  <div class="summary-card">
+    <div class="lbl">Stores &<br>infrastructure</div>
+    <div class="val">83 160 FCFA</div>
+  </div>
+  <div class="summary-card">
+    <div class="lbl">Forfait de base<br>(hors options)</div>
+    <div class="val">353 160 FCFA</div>
+  </div>
+  <div class="summary-card">
+    <div class="lbl">Options<br>(si toutes activées)</div>
+    <div class="val">+ 37 000 FCFA</div>
+  </div>
+</div>
+
+<div class="total-box">
+  <div class="tl">Total maximum</div>
+  <div class="tv">390 160 FCFA</div>
+</div>
+
+<!-- Section 5 : Paiement -->
+<div class="section-title">5. Conditions de paiement</div>
+
+<table class="paym">
+  <thead>
+    <tr>
+      <th style="width:110px">Échéance</th>
+      <th>Condition</th>
+      <th class="right">Montant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Acompte</td>
+      <td>À la signature du contrat — règlement de la Phase 1 (prototype livré) + démarrage immédiat Phase 2</td>
+      <td class="amount">105 948 FCFA (30 %)</td>
+    </tr>
+    <tr>
+      <td>Phase 2 & 3</td>
+      <td>Livraison et validation des interfaces mobiles converties (17 écrans)</td>
+      <td class="amount">105 948 FCFA (30 %)</td>
+    </tr>
+    <tr>
+      <td>Phase 4</td>
+      <td>Livraison et validation Firebase mobile + notifications push opérationnelles</td>
+      <td class="amount">88 290 FCFA (25 %)</td>
+    </tr>
+    <tr>
+      <td>Phase 5</td>
+      <td>Livraison finale, recette complète et publication sur Google Play + App Store</td>
+      <td class="amount">52 974 FCFA (15 %)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note-box">
+  <strong>⚠️ Note :</strong> Les montants ci-dessus sont calculés sur le forfait de base de 353 160 FCFA. En cas d'activation des options conditionnelles, un avenant au contrat sera établi pour le supplément correspondant. Le renouvellement annuel du compte Apple Developer (≈ 58 410 FCFA) est à la charge du client à partir de la 2e année.
+</div>
+
+<!-- Section 6 : Conditions générales -->
+<div class="section-title">6. Conditions générales</div>
+
+<div class="conditions-grid">
+  <div class="cbox inc">
+    <div class="ctitle">Inclus dans le devis</div>
+    <ul>
+      <li>Prototype web complet (Phase 1 — déjà livré et fonctionnel)</li>
+      <li>Conversion intégrale des 17 écrans en React Native</li>
+      <li>Application Android + iOS native (une seule base de code)</li>
+      <li>Intégration Firebase complète (Auth OTP, Firestore, FCM)</li>
+      <li>Notifications push agents (nouvelles commandes)</li>
+      <li>Publication sur Google Play Store et Apple App Store</li>
+      <li>Formation à l'utilisation de la plateforme (1 journée)</li>
+      <li>Corrections de bugs pendant 2 mois après livraison finale</li>
+      <li>Documentation technique et guide utilisateur (PDF)</li>
+    </ul>
+  </div>
+  <div class="cbox exc">
+    <div class="ctitle">Non inclus</div>
+    <ul>
+      <li>Renouvellement annuel Apple Developer (≈ 58 410 FCFA/an)</li>
+      <li>Frais SMS Firebase au-delà du quota gratuit mensuel</li>
+      <li>Fonctionnalités hors périmètre du présent devis</li>
+      <li>Refonte de la charte graphique / redesign complet</li>
+      <li>Formation de nouveaux collaborateurs après livraison</li>
+      <li>Maintenance évolutive (devis séparé sur demande)</li>
+      <li>Intégration avec des APIs ou logiciels tiers non mentionnés</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Section 7 : Acceptation -->
+<div class="section-title">7. Acceptation du devis</div>
+<p style="font-size:12px;color:#374151;margin-bottom:18px;line-height:1.7">Bon pour accord — en signant ce document, le client accepte les conditions décrites dans le présent devis et s'engage à verser l'acompte de <strong>30 % (105 948 FCFA)</strong> pour démarrer les travaux.</p>
+
+<div class="sig-divider"></div>
+
+<div class="sig-section">
+  <div class="sig-block">
+    <div class="sl">Le prestataire</div>
+    <div class="sn">WOUBI ABDOUL AZIZ</div>
+    <div class="st">Développeur Full-Stack & Mobile</div>
+    <div class="sd">Date : 19 juin 2026</div>
+    <div class="sline">Signature</div>
+  </div>
+  <div class="sig-block">
+    <div class="sl">Le client</div>
+    <div class="sn">[NOM DU CLIENT]</div>
+    <div class="sd">Date : _____ / _____ / __________</div>
+    <div class="sline">Signature & cachet</div>
+  </div>
+</div>
+
+<div class="footer">
+  Devis N° WAA-EASYPAY-2026-001 — Valable 30 jours à compter du 19 juin 2026 &nbsp;|&nbsp; WOUBI ABDOUL AZIZ — woubiaziz@gmail.com — +226 54 12 56 37
+</div>
+
+</div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   collection,
   query,
@@ -7,7 +7,7 @@ import {
   addDoc,
   updateDoc,
   doc,
-  getDoc,
+  getDocs,
   setDoc,
   serverTimestamp,
   limit,
@@ -15,68 +15,44 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebase/config';
+import { notifyNewOrder } from '../utils/notifications';
+import { formatCFA } from '../utils/formatters';
 
 /**
- * Lit le document public /config/activeNumbers.
- * Structure : { orange: { number, agentId, agentName }, telmob: {...}, telecel: {...} }
- * Accessible par tous (pas besoin d'authentification si les règles Firestore le permettent).
+ * Construit la map des numéros actifs depuis les agents Firestore.
+ * Un agent est assignable si active=true ET available=true ET a des numéros configurés.
  */
 export async function getActiveNumbers() {
   try {
-    const snap = await getDoc(doc(db, 'config', 'activeNumbers'));
-    return snap.exists() ? snap.data() : null;
+    const q = query(
+      collection(db, 'users'),
+      where('role', '==', 'agent'),
+      where('active', '==', true),
+      where('available', '==', true)
+    );
+    const snap = await getDocs(q);
+    const result = {};
+    snap.docs.forEach(d => {
+      const { operators, name } = d.data();
+      const uid = d.id;
+      if (!operators) return;
+      Object.entries(operators).forEach(([opId, number]) => {
+        if (!number) return;
+        if (!result[opId]) result[opId] = [];
+        result[opId].push({ agentId: uid, agentName: name || 'Agent', number });
+      });
+    });
+    return Object.keys(result).length > 0 ? result : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Met à jour /config/activeNumbers pour un opérateur donné.
- * Appelé par l'admin quand il active un agent pour un opérateur.
+ * L'agent bascule sa propre disponibilité (available).
  */
-// Active ou désactive un agent pour TOUS ses opérateurs en une seule transaction
-export async function setAgentAvailability(agentId, agentName, operators, available) {
-  const configRef = doc(db, 'config', 'activeNumbers');
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(configRef);
-    const data = snap.exists() ? snap.data() : {};
-    const updated = { ...data };
-
-    for (const [opId, number] of Object.entries(operators)) {
-      if (!number) continue;
-      const raw = updated[opId];
-      const currentList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-
-      if (available) {
-        if (!currentList.some(a => a.agentId === agentId)) {
-          updated[opId] = [...currentList, { agentId, agentName, number }];
-        }
-      } else {
-        updated[opId] = currentList.filter(a => a.agentId !== agentId);
-      }
-    }
-
-    tx.set(configRef, { ...updated, updatedAt: serverTimestamp() });
-  });
-}
-
-// Toggle : ajoute ou retire l'agent du tableau des actifs pour cet opérateur
-export async function setActiveAgent(operatorId, agentId, agentName, number) {
-  const configRef = doc(db, 'config', 'activeNumbers');
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(configRef);
-    const data = snap.exists() ? snap.data() : {};
-    // Compatibilité avec l'ancienne structure objet
-    const raw = data[operatorId];
-    const currentList = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-
-    const alreadyActive = currentList.some(a => a.agentId === agentId);
-    const newList = alreadyActive
-      ? currentList.filter(a => a.agentId !== agentId)       // désactiver
-      : [...currentList, { agentId, agentName, number }];    // activer
-
-    tx.set(configRef, { ...data, [operatorId]: newList, updatedAt: serverTimestamp() });
-  });
+export async function setAgentAvailability(uid, available) {
+  await updateDoc(doc(db, 'users', uid), { available, updatedAt: serverTimestamp() });
 }
 
 /**
@@ -136,41 +112,69 @@ export function useAgentTransactions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(auth.currentUser);
+  // Ids déjà vus (tous statuts confondus), pour détecter les commandes
+  // réellement nouvelles et notifier l'agent — null tant que le tout premier
+  // instantané n'est pas arrivé, pour ne pas notifier les commandes déjà là
+  // au chargement de la page.
+  const knownIdsRef = useRef(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, u => setUser(u));
   }, []);
 
   useEffect(() => {
+    knownIdsRef.current = null;
     if (!user) { setLoading(false); return; }
 
-    // Transactions assignées à cet agent OU non-assignées (null = avant configuration opérateurs)
-    // `in` sur un seul champ → pas d'index composite requis
-    const q = query(
-      collection(db, 'transactions'),
-      where('assignedAgentId', 'in', [user.uid, null])
-    );
+    // Deux écoutes séparées fusionnées côté client : Firestore ne matche jamais
+    // `null` via l'opérateur `in` (même listé dans le tableau), donc
+    // `where('assignedAgentId', 'in', [uid, null])` ignore silencieusement
+    // toutes les transactions non assignées (ex. tous les retraits).
+    const results = { mine: [], unassigned: [] };
+    const active = ['pending', 'awaiting_confirmation', 'processing'];
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const active = ['pending', 'awaiting_confirmation', 'processing'];
-        const txs = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((t) => active.includes(t.status))
-          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        setTransactions(txs);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Error fetching agent transactions:', err);
-        setError(err.message);
-        setLoading(false);
+    const merge = () => {
+      const byId = new Map();
+      [...results.mine, ...results.unassigned].forEach((t) => byId.set(t.id, t));
+      const all = Array.from(byId.values());
+      const txs = all
+        .filter((t) => active.includes(t.status))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      if (knownIdsRef.current) {
+        const freshOrders = txs.filter((t) => t.status === 'pending' && !knownIdsRef.current.has(t.id));
+        freshOrders.forEach((t) => notifyNewOrder(t, formatCFA));
       }
-    );
+      knownIdsRef.current = new Set(all.map((t) => t.id));
 
-    return () => unsubscribe();
+      setTransactions(txs);
+      setLoading(false);
+      setError(null);
+    };
+
+    const onErr = (err) => {
+      console.error('Error fetching agent transactions:', err);
+      setError(err.message);
+      setLoading(false);
+    };
+
+    const qMine = query(collection(db, 'transactions'), where('assignedAgentId', '==', user.uid));
+    const qUnassigned = query(collection(db, 'transactions'), where('assignedAgentId', '==', null));
+
+    const unsubMine = onSnapshot(qMine, (snap) => {
+      results.mine = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      merge();
+    }, onErr);
+
+    const unsubUnassigned = onSnapshot(qUnassigned, (snap) => {
+      results.unassigned = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      merge();
+    }, onErr);
+
+    return () => {
+      unsubMine();
+      unsubUnassigned();
+    };
   }, [user]);
 
   return { transactions, loading, error };
@@ -232,6 +236,7 @@ export function useTransactionActions() {
     setSubmitting(true);
     try {
       const txData = {
+        assignedAgentId: null,
         ...data,
         clientId: auth.currentUser?.uid || 'anonymous',
         clientName: auth.currentUser?.displayName || auth.currentUser?.phoneNumber || 'Client',

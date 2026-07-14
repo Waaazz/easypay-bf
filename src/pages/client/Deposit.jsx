@@ -25,15 +25,15 @@ function ProgressBar({ step }) {
         <React.Fragment key={label}>
           <div className="flex flex-col items-center gap-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all
-              ${i <= active ? 'bg-[#1e3a8a] text-white' : 'bg-gray-200 text-gray-400'}`}>
+              ${i <= active ? 'bg-[#316516] text-white' : 'bg-gray-200 text-gray-400'}`}>
               {i < active ? <Check className="w-3.5 h-3.5" /> : i + 1}
             </div>
-            <span className={`text-xs ${i <= active ? 'text-[#1e3a8a] font-medium' : 'text-gray-400'}`}>
+            <span className={`text-xs ${i <= active ? 'text-[#316516] font-medium' : 'text-gray-400'}`}>
               {label}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`h-0.5 w-8 mb-4 rounded transition-all ${i < active ? 'bg-[#1e3a8a]' : 'bg-gray-200'}`} />
+            <div className={`h-0.5 w-8 mb-4 rounded transition-all ${i < active ? 'bg-[#316516]' : 'bg-gray-200'}`} />
           )}
         </React.Fragment>
       ))}
@@ -114,7 +114,7 @@ function Header({ title, onBack }) {
         className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">
         <ArrowLeft className="w-5 h-5 text-gray-700" />
       </button>
-      <h1 className="flex-1 text-center text-base font-bold text-[#1e3a8a]">{title}</h1>
+      <h1 className="flex-1 text-center text-base font-bold text-[#316516]">{title}</h1>
       <div className="w-9" />
     </div>
   );
@@ -166,8 +166,8 @@ export default function Deposit() {
           <div className="bg-gray-100 rounded-2xl p-4 text-center">
             <p className="text-gray-500 text-sm mb-2">Montant à déposer</p>
             <div className="flex items-center justify-center gap-3">
-              <Wallet className="w-7 h-7 text-[#1e3a8a]" />
-              <span className="text-3xl font-bold text-[#1e3a8a]">{amount.toLocaleString('fr-FR')} FCFA</span>
+              <Wallet className="w-7 h-7 text-[#316516]" />
+              <span className="text-3xl font-bold text-[#316516]">{amount.toLocaleString('fr-FR')} FCFA</span>
             </div>
           </div>
 
@@ -177,7 +177,7 @@ export default function Deposit() {
               <div className="absolute left-4 top-1/2 -translate-y-1/2"><User className="w-5 h-5 text-gray-400" /></div>
               <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)}
                 placeholder="Ex : 198287195"
-                className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
                 autoFocus onKeyDown={e => e.key === 'Enter' && handleNext()} />
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function Deposit() {
           {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
           <button onClick={handleNext}
-            className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
             Continuer <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -224,25 +224,28 @@ export default function Deposit() {
               {AGENT_NUMBERS.map(op => {
                 const raw = activeNumbers?.[op.id];
                 const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-                const displayNum = list.length > 0 ? list[0].number : op.number;
+                const available = list.length > 0;
+                const displayNum = available ? list[0].number : null;
                 return (
                   <button key={op.id} onClick={() => handleSelectOp(op)}
-                    disabled={loadingAgents}
+                    disabled={loadingAgents || !available}
                     className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left
-                      ${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98] disabled:opacity-60`}>
+                      ${available ? `${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98]` : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'}`}>
                     <span className="text-2xl">{op.logo}</span>
                     <div className="flex-1">
-                      <p className={`font-bold text-base ${op.text}`}>{op.name}</p>
+                      <p className={`font-bold text-base ${available ? op.text : 'text-gray-400'}`}>{op.name}</p>
                       {loadingAgents
                         ? <p className="text-gray-400 text-sm flex items-center gap-1">
                             <RefreshCw className="w-3 h-3 animate-spin" /> Chargement...
                           </p>
-                        : <p className="text-gray-500 text-sm">
-                            Numéro de dépôt : <span className="font-semibold text-gray-800">{displayNum}</span>
-                          </p>
+                        : available
+                          ? <p className="text-gray-500 text-sm">
+                              Numéro de dépôt : <span className="font-semibold text-gray-800">{displayNum}</span>
+                            </p>
+                          : <p className="text-gray-400 text-sm">Indisponible pour le moment</p>
                       }
                     </div>
-                    <ArrowRight className={`w-5 h-5 ml-auto ${op.text}`} />
+                    {available && <ArrowRight className={`w-5 h-5 ml-auto ${op.text}`} />}
                   </button>
                 );
               })}
@@ -261,7 +264,7 @@ export default function Deposit() {
       setError('');
 
       // Config chargée au choix de l'opérateur depuis /config/activeNumbers
-      const agentNumber = selectedAgentConfig?.number || operator.raw || operator.number;
+      const agentNumber = selectedAgentConfig?.number || '';
 
       const result = await createTransaction({
         type: 'deposit',
@@ -306,7 +309,7 @@ export default function Deposit() {
               <div className="absolute left-4 top-1/2 -translate-y-1/2"><Phone className="w-5 h-5 text-gray-400" /></div>
               <input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)}
                 placeholder="Ex : 07 12 34 56"
-                className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
                 autoFocus onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
             </div>
           </div>
@@ -314,7 +317,7 @@ export default function Deposit() {
           {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
           <button onClick={handleSubmit} disabled={submitting}
-            className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
             {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Confirmer <ArrowRight className="w-5 h-5" /></>}
           </button>
         </div>
@@ -325,8 +328,8 @@ export default function Deposit() {
   // ── Étape 3 : Page de paiement ───────────────────────────────────────────
   if (step === S.PAYMENT) {
     // Utilise le numéro spécifique de l'agent assigné (pas le numéro générique des constantes)
-    const displayNumber = assignedAgentNumber || operator.number;
-    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber || operator.raw, amount) || '';
+    const displayNumber = assignedAgentNumber;
+    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, amount) || '';
     const ussdTel = `tel:${ussd.replace('#', '%23')}`;
     const waMsg = encodeURIComponent(
       `Bonjour, j'ai effectué un dépôt de ${amount.toLocaleString('fr-FR')} FCFA sur mon compte ${platformLabel} (ID: ${accountId}). Référence : #${txId.slice(0, 12).toUpperCase()}`
@@ -349,8 +352,8 @@ export default function Deposit() {
           <div className="flex justify-center"><SessionTimer /></div>
 
           {/* Carte montant */}
-          <div className="bg-[#1e3a8a] rounded-2xl p-5 text-white">
-            <p className="text-blue-200 text-xs mb-1">Montant à envoyer</p>
+          <div className="bg-[#316516] rounded-2xl p-5 text-white">
+            <p className="text-primary-200 text-xs mb-1">Montant à envoyer</p>
             <p className="text-3xl font-bold mb-3">{amount.toLocaleString('fr-FR')} FCFA</p>
             <div className="bg-white/10 rounded-xl px-4 py-2.5 text-sm">
               Dépôt sur le compte{' '}
@@ -362,7 +365,7 @@ export default function Deposit() {
           {/* Numéro de l'agent assigné */}
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-2">
-              Envoyez <span className="text-[#1e3a8a]">{amount.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
+              Envoyez <span className="text-[#316516]">{amount.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
             </p>
             <div className={`flex items-center justify-between px-4 py-4 rounded-2xl border-2 ${operator.bg} ${operator.border}`}>
               <div className="flex items-center gap-3">
@@ -385,7 +388,7 @@ export default function Deposit() {
                 <CopyBtn value={ussd} />
               </div>
               <a href={ussdTel}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#1e3a8a] text-white font-semibold text-sm hover:bg-[#162660] transition-all">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
                 <Smartphone className="w-4 h-4" />
                 Ouvrir le composeur
               </a>
@@ -414,7 +417,7 @@ export default function Deposit() {
 
           {/* Bouton confirmation */}
           <button onClick={handleConfirmPayment} disabled={confirming}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
             {confirming ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-5 h-5" /> J'ai envoyé le paiement</>}
           </button>
 
@@ -471,21 +474,21 @@ export default function Deposit() {
           </div>
 
           {/* Récapitulatif */}
-          <div className="bg-[#1e3a8a] rounded-2xl p-5 text-white space-y-2">
+          <div className="bg-[#316516] rounded-2xl p-5 text-white space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Montant envoyé</span>
+              <span className="text-primary-200">Montant envoyé</span>
               <span className="font-bold">{amount.toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Opérateur</span>
+              <span className="text-primary-200">Opérateur</span>
               <span className="font-bold">{operator.logo} {operator.name}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Compte {platformLabel}</span>
+              <span className="text-primary-200">Compte {platformLabel}</span>
               <span className="font-bold">{accountId}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-200">Référence</span>
+              <span className="text-primary-200">Référence</span>
               <span className="font-mono font-bold">#{txId.slice(0, 12).toUpperCase()}</span>
             </div>
           </div>
@@ -527,7 +530,7 @@ export default function Deposit() {
           <p className="text-gray-800 font-mono font-bold mt-1">#{txId.slice(0, 12).toUpperCase()}</p>
         </div>
         <button onClick={() => navigate('/')}
-          className="w-full bg-[#1e3a8a] hover:bg-[#162660] text-white font-semibold py-4 rounded-2xl transition-all">
+          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl transition-all">
           Retour à l'accueil
         </button>
       </div>

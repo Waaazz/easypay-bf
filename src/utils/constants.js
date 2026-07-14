@@ -5,14 +5,11 @@ export const OPERATORS = [
   { id: 'wave', name: 'Wave', color: '#1A90FF', bg: 'bg-sky-500', logo: '🌊' },
 ];
 
-// Numéros de dépôt de l'agent — remplacer les numéros par les vrais
 export const AGENT_NUMBERS = [
   {
     id: 'orange',
     name: 'Orange Money',
     logo: '🟠',
-    number: '07 00 00 00',
-    raw: '07000000',
     dot: 'bg-orange-500',
     text: 'text-orange-700',
     bg: 'bg-orange-50',
@@ -20,25 +17,21 @@ export const AGENT_NUMBERS = [
   },
   {
     id: 'telmob',
-    name: 'Telmob',
-    logo: '🔵',
-    number: '60 00 00 00',
-    raw: '60000000',
-    dot: 'bg-blue-600',
-    text: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-  },
-  {
-    id: 'telecel',
-    name: 'Telecel',
+    name: 'Moov Money',
     logo: '🔴',
-    number: '55 00 00 00',
-    raw: '55000000',
     dot: 'bg-red-500',
     text: 'text-red-700',
     bg: 'bg-red-50',
     border: 'border-red-200',
+  },
+  {
+    id: 'telecel',
+    name: 'Telecel Money',
+    logo: '🔵',
+    dot: 'bg-blue-600',
+    text: 'text-blue-700',
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
   },
 ];
 
@@ -49,8 +42,8 @@ export const USSD_CODE = {
   telecel: (agentRaw, amount) => `*135*1*${agentRaw}*${amount}#`,
 };
 
-// Numéro WhatsApp support — à mettre à jour
-export const WHATSAPP_NUMBER = '22600000000';
+// Numéro WhatsApp support
+export const WHATSAPP_NUMBER = '22644002222';
 
 export const DEPOSIT_SESSION_MINUTES = 15;
 
@@ -59,7 +52,7 @@ export const MAX_AMOUNT = 500000;
 
 export const FEES = {
   deposit: 0,
-  withdrawal: 0.01, // 1% withdrawal fee
+  withdrawal: 0, // 0% withdrawal fee
 };
 
 export const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 25000, 50000];

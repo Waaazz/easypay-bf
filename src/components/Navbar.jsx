@@ -49,7 +49,7 @@ export default function Navbar() {
   const authRole = userProfile?.role;
   const isAdminPath = location.pathname.startsWith('/admin');
   const isAgentPath = location.pathname.startsWith('/agent');
-  // /admin a toujours la priorité (pas encore de login admin dédié)
+  // /admin a toujours la priorité pour l'affichage de la sidebar (le contrôle d'accès réel est fait par ProtectedRoute)
   const role = isAdminPath ? 'admin' : (authRole || (isAgentPath ? 'agent' : 'client'));
 
   const displayName = userProfile?.name || user?.displayName || user?.phoneNumber || 'Utilisateur';
@@ -61,7 +61,7 @@ export default function Navbar() {
       const ops = userProfile.operators || {};
       if (Object.keys(ops).length > 0) {
         try {
-          await setAgentAvailability(userProfile.uid, userProfile.name || 'Agent', ops, false);
+          await setAgentAvailability(userProfile.uid, false);
         } catch (_) {}
       }
     }
@@ -109,11 +109,11 @@ export default function Navbar() {
       {/* Logo */}
       <div className="p-6 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">E</span>
+          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="text-white font-bold text-lg leading-none">EasyPay BF</h1>
+            <h1 className="text-white font-bold text-lg leading-none">ApollonPay</h1>
             <p className="text-gray-500 text-xs mt-0.5">{roleLabel}</p>
           </div>
         </div>
@@ -157,10 +157,10 @@ export default function Navbar() {
       <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-gray-900 border-b border-gray-800">
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">E</span>
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
             </div>
-            <span className="text-white font-bold">EasyPay BF</span>
+            <span className="text-white font-bold">ApollonPay</span>
           </div>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}

@@ -10,7 +10,7 @@
   body {
     @apply font-sans antialiased;
     min-height: 100vh;
-    background: linear-gradient(180deg, #7ab3f0 0%, #5a93d8 100%);
+    background: linear-gradient(180deg, #69c522 0%, #3a8015 100%);
   }
 
   #root {
@@ -24,7 +24,7 @@
   }
 
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
   }
 
   .btn-secondary {
@@ -40,7 +40,7 @@
   }
 
   .input-field {
-    @apply w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200;
+    @apply w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-200;
   }
 
   .label {
@@ -48,7 +48,7 @@
   }
 
   .page-title {
-    @apply text-xl font-bold text-[#1e3a8a];
+    @apply text-xl font-bold text-white;
   }
 
   .section-title {

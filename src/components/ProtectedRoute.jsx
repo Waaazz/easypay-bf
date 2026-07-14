@@ -17,8 +17,15 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Une session anonyme (auto-créée pour le flux invité) ne compte pas
+  // comme authentifiée pour les routes protégées.
+  if (!user || (allowedRoles && user.isAnonymous)) {
+    const loginPath = allowedRoles?.includes('admin')
+      ? '/admin/login'
+      : allowedRoles?.includes('agent')
+        ? '/agent/login'
+        : '/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role)) {

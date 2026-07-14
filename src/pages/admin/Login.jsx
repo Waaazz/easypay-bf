@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
-export default function AgentLogin() {
-  const { loginAgent } = useAuth();
+export default function AdminLogin() {
+  const { loginAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,9 +17,8 @@ export default function AgentLogin() {
     e.preventDefault();
     setError('');
 
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 8) {
-      setError('Veuillez entrer un numéro valide.');
+    if (!email.includes('@')) {
+      setError('Veuillez entrer un email valide.');
       return;
     }
     if (!password || password.length < 6) {
@@ -28,11 +27,11 @@ export default function AgentLogin() {
     }
 
     setLoading(true);
-    const result = await loginAgent(phone, password);
+    const result = await loginAdmin(email, password);
     setLoading(false);
 
     if (result.success) {
-      navigate('/agent', { replace: true });
+      navigate('/admin', { replace: true });
     } else {
       setError(result.error);
     }
@@ -46,34 +45,27 @@ export default function AgentLogin() {
           <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
         </div>
         <h1 className="text-white text-2xl font-bold">ApollonPay</h1>
-        <p className="text-gray-500 text-sm mt-1">Espace Agent</p>
+        <p className="text-gray-500 text-sm mt-1">Espace Administration</p>
       </div>
 
       <div className="w-full max-w-md card animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-1">Connexion Agent</h2>
+        <h2 className="text-xl font-bold text-white mb-1">Connexion Admin</h2>
         <p className="text-gray-400 text-sm mb-6">
-          Utilisez les accès fournis par votre administrateur.
+          Utilisez vos identifiants administrateur.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Numéro */}
+          {/* Email */}
           <div>
-            <label className="label">Numéro de téléphone</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <span className="text-gray-400 text-sm font-medium">🇧🇫 +226</span>
-                <div className="w-px h-5 bg-gray-700" />
-              </div>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="70 00 00 00"
-                className="input-field pl-24"
-                maxLength={12}
-                autoFocus
-              />
-            </div>
+            <label className="label">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@easypay.bf"
+              className="input-field"
+              autoFocus
+            />
           </div>
 
           {/* Mot de passe */}
@@ -113,7 +105,7 @@ export default function AgentLogin() {
       </div>
 
       <p className="text-gray-600 text-xs mt-6 text-center">
-        Accès réservé aux agents ApollonPay autorisés
+        Accès réservé aux administrateurs ApollonPay
       </p>
     </div>
   );

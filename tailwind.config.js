@@ -7,19 +7,35 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Vert dérivé du logo ApollonPay (feuillage "+AFRIK")
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#f6fdf0',
+          100: '#eafcdc',
+          200: '#d5f7bb',
+          300: '#b4ef86',
+          400: '#8ade4a',
+          500: '#69c522',
+          600: '#53a316',
+          700: '#3a8015',
+          800: '#316516',
+          900: '#2a5314',
+          950: '#132e05',
         },
+        // Or dérivé du logo ApollonPay (lettres "LLON")
+        gold: {
+          50: '#fffaeb',
+          100: '#fef1c7',
+          200: '#fde18a',
+          300: '#fcd14d',
+          400: '#fbc724',
+          500: '#f5bc0b',
+          600: '#d9a606',
+          700: '#b48a09',
+          800: '#92720e',
+          900: '#785e0f',
+          950: '#453503',
+        },
+        // Navy conservé pour les identités des plateformes externes (1XBET, etc.)
         navy: {
           700: '#1e3a8a',
           800: '#1a3070',
