@@ -51,7 +51,7 @@ export default function InstallPrompt() {
         <div className="flex items-start gap-3 p-4 pb-3">
           {/* Icône app */}
           <div className="w-14 h-14 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden">
-            <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
+            <img src="/icon-192.png" alt="ApollonPay" className="w-full h-full object-cover" />
           </div>
 
           <div className="flex-1 min-w-0">

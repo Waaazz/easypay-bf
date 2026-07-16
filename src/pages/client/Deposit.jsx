@@ -11,6 +11,7 @@ import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransact
 import {
   AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER, DEPOSIT_SESSION_MINUTES,
 } from '../../utils/constants';
+import WaitingCountdown from '../../components/WaitingCountdown';
 
 // ─── Étapes ────────────────────────────────────────────────────────────────
 const S = { ACCOUNT_ID: 0, CHOOSE_OP: 1, CLIENT_PHONE: 2, PAYMENT: 3, WAITING: 4, SUCCESS: 5 };
@@ -492,6 +493,9 @@ export default function Deposit() {
               <span className="font-mono font-bold">#{txId.slice(0, 12).toUpperCase()}</span>
             </div>
           </div>
+
+          {/* Décompte visuel */}
+          <WaitingCountdown seconds={60} />
 
           {/* Statut temps réel */}
           <LiveStatus

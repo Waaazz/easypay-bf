@@ -13,10 +13,10 @@ import {
   limit,
   runTransaction,
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebase/config';
 import { notifyNewOrder } from '../utils/notifications';
 import { formatCFA } from '../utils/formatters';
+import { useAuth } from './useAuth';
 
 /**
  * Construit la map des numéros actifs depuis les agents Firestore.
@@ -59,14 +59,14 @@ export async function setAgentAvailability(uid, available) {
  * Hook for client transactions
  */
 export function useClientTransactions() {
-  const [user, setUser] = useState(auth.currentUser);
+  // Réutilise l'état d'authentification d'AuthContext plutôt que de tenir sa
+  // propre écoute onAuthStateChanged : celle-ci n'a pas la protection contre
+  // l'évènement anonyme fantôme que Firebase peut émettre après une vraie
+  // connexion, et retomberait silencieusement sur le mauvais uid.
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (firebaseUser) => setUser(firebaseUser));
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -108,19 +108,20 @@ export function useClientTransactions() {
  * Hook for agent — only transactions assigned to this agent
  */
 export function useAgentTransactions() {
+  // Réutilise l'état d'authentification d'AuthContext plutôt que de tenir sa
+  // propre écoute onAuthStateChanged : celle-ci n'a pas la protection contre
+  // l'évènement anonyme fantôme que Firebase peut émettre après une vraie
+  // connexion, et retomberait silencieusement sur le mauvais uid — un agent
+  // pouvait alors voir un tableau de bord vide jusqu'à rechargement complet.
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(auth.currentUser);
   // Ids déjà vus (tous statuts confondus), pour détecter les commandes
   // réellement nouvelles et notifier l'agent — null tant que le tout premier
   // instantané n'est pas arrivé, pour ne pas notifier les commandes déjà là
   // au chargement de la page.
   const knownIdsRef = useRef(null);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, u => setUser(u));
-  }, []);
 
   useEffect(() => {
     knownIdsRef.current = null;
@@ -269,7 +270,11 @@ export function useTransactionActions() {
     }
   }, []);
 
-  const acceptOrder = useCallback(async (transactionId, agentName) => {
+  // Traite une commande en un seul clic : réserve ET termine dans la même
+  // transaction Firestore atomique (au lieu de accepter puis terminer en deux
+  // temps). Garde la même protection contre le double-traitement — utile tant
+  // que des retraits sans agent disponible retombent en diffusion à tous.
+  const processOrder = useCallback(async (transactionId, agentName) => {
     const txRef = doc(db, 'transactions', transactionId);
     const agentId = auth.currentUser?.uid;
     if (!agentId) return { success: false, error: 'Non authentifié.' };
@@ -290,7 +295,7 @@ export function useTransactionActions() {
         }
 
         firestoreTx.update(txRef, {
-          status: 'processing',
+          status: 'completed',
           agentId,
           agentName: agentName || 'Agent',
           updatedAt: serverTimestamp(),
@@ -331,5 +336,5 @@ export function useTransactionActions() {
     }
   }, []);
 
-  return { createTransaction, confirmPayment, acceptOrder, completeOrder, cancelOrder, submitting };
+  return { createTransaction, confirmPayment, processOrder, completeOrder, cancelOrder, submitting };
 }

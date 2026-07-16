@@ -70,7 +70,14 @@
       "Bash(node ./debug-blank.tmp.mjs)",
       "Bash(curl -sf http://localhost:3000)",
       "Bash(node ./shot-center.tmp.mjs)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npx vercel *)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
+      "Bash(magick -version)",
+      "Bash(convert -version)",
+      "Bash(python -c ' *)"
     ]
   }
 }

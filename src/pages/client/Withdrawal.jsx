@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { useTransactionActions } from '../../hooks/useTransactions';
+import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
 import { FEES, WHATSAPP_NUMBER } from '../../utils/constants';
+import WaitingCountdown from '../../components/WaitingCountdown';
 
 // ─── Étapes ────────────────────────────────────────────────────────────────
 const S = { ACCOUNT_ID: 0, ORANGE_INFO: 1, WITHDRAW_CODE: 2, SUMMARY: 3, WAITING: 4, SUCCESS: 5 };
@@ -177,6 +178,13 @@ export default function Withdrawal() {
   const [txId, setTxId]               = useState('');
   const [error, setError]             = useState('');
   const [cancelled, setCancelled]     = useState(false);
+  // Agents Orange Money disponibles, chargés au montage pour tirer une
+  // assignation automatique à la confirmation (même logique que les dépôts).
+  const [activeAgents, setActiveAgents] = useState(null);
+
+  useEffect(() => {
+    getActiveNumbers().then(setActiveAgents);
+  }, []);
 
   const next = (validate) => {
     setError('');
@@ -296,6 +304,15 @@ export default function Withdrawal() {
 
     const handleConfirm = async () => {
       setError('');
+      // Distribution automatique : tire un agent Orange Money au hasard parmi
+      // les disponibles, comme pour les dépôts. Si aucun n'est disponible, on
+      // repasse en diffusion à tous les agents (comportement précédent) plutôt
+      // que de bloquer le client.
+      const orangeAgents = activeAgents?.orange || [];
+      const picked = orangeAgents.length > 0
+        ? orangeAgents[Math.floor(Math.random() * orangeAgents.length)]
+        : null;
+
       const result = await createTransaction({
         type: 'withdrawal',
         amount,
@@ -305,6 +322,7 @@ export default function Withdrawal() {
         accountName: accountName.trim(),
         withdrawCode: withdrawCode.trim(),
         operator: 'orange',
+        assignedAgentId: picked?.agentId || null,
       });
       if (result.success) { setTxId(result.id); setStep(S.WAITING); }
       else setError(result.error || 'Une erreur est survenue.');
@@ -419,6 +437,9 @@ export default function Withdrawal() {
               </div>
             </div>
           </div>
+
+          {/* Décompte visuel */}
+          <WaitingCountdown seconds={60} />
 
           {/* Statut temps réel */}
           <LiveStatus

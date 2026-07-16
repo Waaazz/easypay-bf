@@ -22,7 +22,7 @@ import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { acceptOrder, completeOrder, cancelOrder } = useTransactionActions();
+  const { processOrder, completeOrder, cancelOrder } = useTransactionActions();
 
   const [transaction, setTransaction] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,16 +49,11 @@ export default function OrderDetail() {
     return () => unsubscribe();
   }, [id]);
 
-  const handleAccept = async () => {
+  const handleProcess = async () => {
     setActionLoading(true);
-    const result = await acceptOrder(id);
-    setActionLoading(false);
-    if (!result.success) setError(result.error);
-  };
-
-  const handleComplete = async () => {
-    setActionLoading(true);
-    const result = await completeOrder(id);
+    const result = transaction?.status === 'processing'
+      ? await completeOrder(id)
+      : await processOrder(id);
     setActionLoading(false);
     if (!result.success) setError(result.error);
   };
@@ -169,30 +164,21 @@ export default function OrderDetail() {
         </div>
 
         {/* Actions */}
-        {(transaction.status === 'pending' || isAwaitingConfirm) && (
+        {(transaction.status === 'pending' || isAwaitingConfirm || transaction.status === 'processing') && (
           <div className="card space-y-3">
             <h3 className="text-white font-semibold">Actions</h3>
-            <button onClick={handleAccept} disabled={actionLoading} className="btn-primary w-full">
+            <button onClick={handleProcess} disabled={actionLoading} className="btn-primary w-full">
               {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
-                <><CheckCircle className="w-4 h-4" /> {isAwaitingConfirm ? 'Vérifier et Accepter' : 'Accepter la commande'}</>
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  {transaction.status === 'processing'
+                    ? 'Marquer comme terminé'
+                    : isAwaitingConfirm ? 'Vérifier et traiter' : 'Traiter la commande'}
+                </>
               )}
             </button>
             <button onClick={() => setShowCancel(!showCancel)} className="btn-danger w-full">
               <XCircle className="w-4 h-4" /> Annuler la commande
-            </button>
-          </div>
-        )}
-
-        {transaction.status === 'processing' && (
-          <div className="card space-y-3">
-            <h3 className="text-white font-semibold">Actions</h3>
-            <button onClick={handleComplete} disabled={actionLoading} className="btn-primary w-full">
-              {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
-                <><CheckCircle className="w-4 h-4" /> Marquer comme terminé</>
-              )}
-            </button>
-            <button onClick={() => setShowCancel(!showCancel)} className="btn-danger w-full">
-              <XCircle className="w-4 h-4" /> Annuler
             </button>
           </div>
         )}

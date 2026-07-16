@@ -110,7 +110,7 @@ export default function Navbar() {
       <div className="p-6 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
+            <img src="/icon-192.png" alt="ApollonPay" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg leading-none">ApollonPay</h1>
@@ -158,7 +158,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
+              <img src="/icon-192.png" alt="ApollonPay" className="w-full h-full object-cover" />
             </div>
             <span className="text-white font-bold">ApollonPay</span>
           </div>

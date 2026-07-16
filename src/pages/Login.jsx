@@ -46,7 +46,7 @@ export default function Login() {
       {/* Logo */}
       <div className="mb-8 text-center">
         <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-900/50 overflow-hidden">
-          <img src="/icon.svg" alt="ApollonPay" className="w-full h-full object-cover" />
+          <img src="/icon-192.png" alt="ApollonPay" className="w-full h-full object-cover" />
         </div>
         <h1 className="text-white text-2xl font-bold">ApollonPay</h1>
         <p className="text-gray-500 text-sm mt-1">Dépôt & Retrait Paris Sportifs</p>

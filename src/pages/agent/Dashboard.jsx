@@ -3,7 +3,7 @@ import {
   Inbox, CheckCircle, XCircle, Clock,
   ArrowDownCircle, ArrowUpCircle, RefreshCw,
   AlertCircle, Phone, User, ChevronDown, ChevronUp,
-  Wifi, WifiOff, BellRing,
+  Wifi, WifiOff, BellRing, CreditCard, Key,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
@@ -15,7 +15,7 @@ import {
   isNotificationSupported, getNotificationPermission, requestNotificationPermission,
 } from '../../utils/notifications';
 
-function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
+function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) {
   const [expanded, setExpanded] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelInput, setShowCancelInput] = useState(false);
@@ -26,6 +26,9 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
     ? AGENT_NUMBERS.find(op => op.id === transaction.operator)
     : OPERATORS.find(op => op.id === transaction.operator);
   const isAwaitingConfirm = transaction.status === 'awaiting_confirmation';
+  // 'processing' ne devrait plus être produit par de nouvelles commandes
+  // (traitement en un clic), mais on garde ce cas pour d'éventuelles
+  // commandes déjà en cours créées avant ce changement.
   const isProcessing = transaction.status === 'processing';
   const canClaim = transaction.status === 'pending' || isAwaitingConfirm;
 
@@ -34,15 +37,13 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
     ? (transaction.agentOperatorNumber || transaction.clientPhone)
     : transaction.phone;
 
-  const handleAccept = async () => {
+  const handleProcess = async () => {
     setLoading(true);
-    await onAccept(transaction.id, agentName);
-    setLoading(false);
-  };
-
-  const handleComplete = async () => {
-    setLoading(true);
-    await onComplete(transaction.id);
+    if (isProcessing) {
+      await onComplete(transaction.id);
+    } else {
+      await onProcess(transaction.id, agentName);
+    }
     setLoading(false);
   };
 
@@ -104,6 +105,15 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
 
           {/* Infos client */}
           <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+              <p className="text-gray-500 text-xs mb-1">ID de compte {transaction.platform?.toUpperCase()}</p>
+              <div className="flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-white text-sm font-bold">
+                  {transaction.accountId || '—'}
+                </span>
+              </div>
+            </div>
             <div className="bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">Client</p>
               <div className="flex items-center gap-1.5">
@@ -128,6 +138,28 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
                 <span className="text-white text-sm font-medium">{transaction.agentOperatorNumber}</span>
               </div>
             )}
+            {!isDeposit && (
+              <>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+                  <p className="text-gray-500 text-xs mb-1">Titulaire Orange Money</p>
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-white text-sm font-medium truncate">
+                      {transaction.accountName || '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+                  <p className="text-gray-500 text-xs mb-1">Code de retrait</p>
+                  <div className="flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-white text-sm font-bold">
+                      {transaction.withdrawCode || '—'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
             <div className="bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">Plateforme</p>
               <span className="text-white text-sm">{transaction.platform?.toUpperCase()}</span>
@@ -138,27 +170,18 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
             </div>
           </div>
 
-          {/* Boutons d'action */}
-          {canClaim && (
+          {/* Bouton d'action unique : traite (accepte + termine) en un clic */}
+          {(canClaim || isProcessing) && (
             <div className="flex gap-2">
-              <button onClick={handleAccept} disabled={loading} className="btn-primary flex-1">
+              <button onClick={handleProcess} disabled={loading} className="btn-primary flex-1">
                 {loading
                   ? <RefreshCw className="w-4 h-4 animate-spin" />
-                  : <><CheckCircle className="w-4 h-4" /> {isAwaitingConfirm ? 'Vérifier & Accepter' : 'Accepter'}</>
-                }
-              </button>
-              <button onClick={() => setShowCancelInput(!showCancelInput)} className="btn-danger flex-1">
-                <XCircle className="w-4 h-4" /> Annuler
-              </button>
-            </div>
-          )}
-
-          {isProcessing && (
-            <div className="flex gap-2">
-              <button onClick={handleComplete} disabled={loading} className="btn-primary flex-1">
-                {loading
-                  ? <RefreshCw className="w-4 h-4 animate-spin" />
-                  : <><CheckCircle className="w-4 h-4" /> Marquer terminé</>
+                  : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      {isProcessing ? 'Marquer terminé' : isAwaitingConfirm ? 'Vérifier & Traiter' : 'Traiter'}
+                    </>
+                  )
                 }
               </button>
               <button onClick={() => setShowCancelInput(!showCancelInput)} className="btn-danger flex-1">
@@ -185,7 +208,7 @@ function OrderCard({ transaction, onAccept, onComplete, onCancel, agentName }) {
 
 export default function AgentDashboard() {
   const { transactions, loading } = useAgentTransactions();
-  const { acceptOrder, completeOrder, cancelOrder } = useTransactionActions();
+  const { processOrder, completeOrder, cancelOrder } = useTransactionActions();
   const { userProfile, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('pending');
 
@@ -390,7 +413,7 @@ export default function AgentDashboard() {
           <div className="space-y-3">
             {displayed.map(tx => (
               <OrderCard key={tx.id} transaction={tx}
-                onAccept={acceptOrder} onComplete={completeOrder} onCancel={cancelOrder}
+                onProcess={processOrder} onComplete={completeOrder} onCancel={cancelOrder}
                 agentName={agentName} />
             ))}
           </div>
