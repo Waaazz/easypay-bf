@@ -8,7 +8,7 @@ import {
   linkWithCredential,
   EmailAuthProvider,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, secondaryAuth } from '../firebase/config';
 
 const AuthContext = createContext(null);
@@ -107,6 +107,9 @@ export function AuthProvider({ children }) {
       const result = await signInWithEmailAndPassword(auth, email, password);
       realUidRef.current = result.user.uid;
       setUser(result.user);
+      // Trace la dernière connexion pour le suivi admin — best-effort, ne
+      // doit pas faire échouer la connexion si l'écriture échoue.
+      updateDoc(doc(db, 'users', result.user.uid), { lastLoginAt: serverTimestamp() }).catch(() => {});
       signingIn.current = false;
       return { success: true };
     } catch {

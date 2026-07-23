@@ -138,17 +138,24 @@ export default function Deposit() {
   const [error, setError]             = useState('');
   const [confirming, setConfirming]   = useState(false);
   const [cancelled, setCancelled]     = useState(false);
-  // Numéros actifs chargés depuis /config/activeNumbers (document public Firestore)
-  // Structure : { orange: { number, agentId, agentName }, telmob: {...}, telecel: {...} }
-  const [activeNumbers, setActiveNumbers] = useState(null);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [assignedAgentNumber, setAssignedAgentNumber] = useState('');
   const [selectedAgentConfig, setSelectedAgentConfig] = useState(null);
+  // Un agent est tiré au hasard par opérateur dès le chargement, puis réutilisé
+  // pour l'affichage ET l'assignation : le numéro montré au client est donc
+  // toujours celui qui sera réellement utilisé pour la transaction.
+  const [pickedAgents, setPickedAgents] = useState({});
 
   useEffect(() => {
     getActiveNumbers().then(data => {
-      setActiveNumbers(data);
       setLoadingAgents(false);
+      const picks = {};
+      AGENT_NUMBERS.forEach(op => {
+        const raw = data?.[op.id];
+        const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        picks[op.id] = list.length > 0 ? list[Math.floor(Math.random() * list.length)] : null;
+      });
+      setPickedAgents(picks);
     });
   }, []);
 
@@ -204,12 +211,8 @@ export default function Deposit() {
   // ── Étape 1 : Choix de l'opérateur ──────────────────────────────────────
   if (step === S.CHOOSE_OP) {
     const handleSelectOp = (op) => {
-      const raw = activeNumbers?.[op.id];
-      const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-      // Tire un agent au hasard parmi les actifs pour équilibrer la charge
-      const picked = list.length > 0 ? list[Math.floor(Math.random() * list.length)] : null;
       setOperator(op);
-      setSelectedAgentConfig(picked);
+      setSelectedAgentConfig(pickedAgents[op.id] || null);
       setStep(S.CLIENT_PHONE);
     };
 
@@ -223,10 +226,9 @@ export default function Deposit() {
             <p className="text-sm text-gray-500 mb-4">Choisissez votre opérateur pour voir le numéro de dépôt.</p>
             <div className="space-y-3">
               {AGENT_NUMBERS.map(op => {
-                const raw = activeNumbers?.[op.id];
-                const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-                const available = list.length > 0;
-                const displayNum = available ? list[0].number : null;
+                const picked = pickedAgents[op.id];
+                const available = !!picked;
+                const displayNum = available ? picked.number : null;
                 return (
                   <button key={op.id} onClick={() => handleSelectOp(op)}
                     disabled={loadingAgents || !available}

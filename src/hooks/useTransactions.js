@@ -50,9 +50,16 @@ export async function getActiveNumbers() {
 
 /**
  * L'agent bascule sa propre disponibilité (available).
+ * availabilityChangedAt permet à l'admin d'afficher depuis quand un agent
+ * est indisponible (ou disponible), indépendamment des autres mises à jour
+ * du profil qui touchent updatedAt.
  */
 export async function setAgentAvailability(uid, available) {
-  await updateDoc(doc(db, 'users', uid), { available, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'users', uid), {
+    available,
+    availabilityChangedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /**
@@ -321,12 +328,16 @@ export function useTransactionActions() {
     }
   }, []);
 
-  const cancelOrder = useCallback(async (transactionId, reason) => {
+  const cancelOrder = useCallback(async (transactionId, reason, agentName) => {
     try {
       const txRef = doc(db, 'transactions', transactionId);
       await updateDoc(txRef, {
         status: 'cancelled',
         note: reason || 'Annulé',
+        // Attribue l'annulation à l'agent qui l'a effectuée, pour permettre
+        // un suivi du taux d'annulation par agent côté admin.
+        agentId: auth.currentUser?.uid || null,
+        agentName: agentName || 'Agent',
         updatedAt: serverTimestamp(),
       });
       return { success: true };

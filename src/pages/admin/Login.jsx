@@ -62,7 +62,7 @@ export default function AdminLogin() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@easypay.bf"
+              placeholder="admin@apollonpay.bf"
               className="input-field"
               autoFocus
             />

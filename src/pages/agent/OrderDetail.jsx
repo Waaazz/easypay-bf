@@ -16,6 +16,7 @@ import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
 import { db } from '../../firebase/config';
 import { useTransactionActions } from '../../hooks/useTransactions';
+import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
 
@@ -23,6 +24,8 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { processOrder, completeOrder, cancelOrder } = useTransactionActions();
+  const { userProfile } = useAuth();
+  const agentName = userProfile?.name || 'Agent';
 
   const [transaction, setTransaction] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +56,7 @@ export default function OrderDetail() {
     setActionLoading(true);
     const result = transaction?.status === 'processing'
       ? await completeOrder(id)
-      : await processOrder(id);
+      : await processOrder(id, agentName);
     setActionLoading(false);
     if (!result.success) setError(result.error);
   };
@@ -61,7 +64,7 @@ export default function OrderDetail() {
   const handleCancel = async () => {
     if (!cancelReason.trim()) return;
     setActionLoading(true);
-    const result = await cancelOrder(id, cancelReason);
+    const result = await cancelOrder(id, cancelReason, agentName);
     setActionLoading(false);
     if (!result.success) setError(result.error);
   };
@@ -144,6 +147,11 @@ export default function OrderDetail() {
               ...(!isDeposit ? [
                 { icon: User,       label: 'Titulaire',  value: transaction.accountName || '—' },
                 { icon: CreditCard, label: 'Code retrait', value: transaction.withdrawCode || '—' },
+              ] : []),
+              ...(transaction.platform === 'canalplus' ? [
+                { icon: User,       label: 'Titulaire décodeur', value: transaction.holderName || '—' },
+                { icon: CreditCard, label: 'Offre',      value: `${transaction.offerName || '—'} — ${transaction.durationLabel || '—'}` },
+                { icon: CreditCard, label: 'Option',     value: transaction.optionName || 'Aucune option' },
               ] : []),
               { icon: User,     label: 'Client',     value: transaction.clientName || 'Inconnu' },
               { icon: Calendar, label: 'Date',        value: formatDate(transaction.createdAt) },

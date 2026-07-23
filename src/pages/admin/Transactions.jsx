@@ -1,15 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   Search,
   AlertCircle,
+  Download,
+  RefreshCw,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
+import { db } from '../../firebase/config';
 import { useAdminTransactions } from '../../hooks/useTransactions';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+// Chargée dynamiquement au clic (voir handleExport) : jsPDF embarque
+// html2canvas et alourdit sensiblement le bundle, à ne pas imposer à tous
+// les visiteurs (clients/agents) pour une fonctionnalité réservée à l'admin.
+
+const PERIOD_FILTERS = [
+  { label: "Aujourd'hui", value: 'today' },
+  { label: '7 derniers jours', value: '7d' },
+  { label: '30 derniers jours', value: '30d' },
+];
+
+function periodStartDate(period) {
+  const now = new Date();
+  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const d = new Date(now);
+  d.setDate(d.getDate() - (period === '7d' ? 7 : 30));
+  return d;
+}
 
 const STATUS_FILTERS = [
   { label: 'Tout', value: null },
@@ -59,6 +80,9 @@ export default function AdminTransactions({ initialType = null }) {
   const [statusFilter, setStatusFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(initialType);
   const [operatorFilter, setOperatorFilter] = useState(null);
+  const [periodFilter, setPeriodFilter] = useState('7d');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // Les liens "Transactions / Dépôts / Retraits" pointent vers ce même
   // composant avec juste un `initialType` différent ; React ne le remonte
@@ -87,6 +111,68 @@ export default function AdminTransactions({ initialType = null }) {
   const totalVolume = filtered
     .filter((t) => t.status === 'completed')
     .reduce((s, t) => s + t.amount, 0);
+
+  // Export PDF : requête dédiée sur la période choisie (pas limitée aux 100
+  // dernières transactions de la vue temps réel), puis on applique les
+  // filtres statut/type/opérateur actuellement sélectionnés à l'écran.
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      const start = periodStartDate(periodFilter);
+      const q = query(
+        collection(db, 'transactions'),
+        where('createdAt', '>=', start),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      if (statusFilter) rows = rows.filter((t) => t.status === statusFilter);
+      if (typeFilter) rows = rows.filter((t) => t.type === typeFilter);
+      if (operatorFilter) rows = rows.filter((t) => t.operator === operatorFilter);
+
+      if (rows.length === 0) {
+        setExportError('Aucune transaction sur cette période avec ces filtres.');
+        return;
+      }
+
+      const headers = ['ID', 'Type', 'Statut', 'Plateforme', 'Opérateur', 'Montant (FCFA)', 'Client', 'Téléphone', 'Agent', 'Date'];
+      const pdfRows = rows.map((tx) => {
+        const isDeposit = tx.type === 'deposit';
+        const phone = isDeposit ? tx.clientPhone : tx.phone;
+        return [
+          formatTxId(tx.id),
+          isDeposit ? 'Dépôt' : 'Retrait',
+          tx.status,
+          tx.platform?.toUpperCase() || '',
+          tx.operator || '',
+          formatCFA(tx.amount ?? 0),
+          tx.clientName || '',
+          phone || '',
+          tx.agentName || '',
+          formatDate(tx.createdAt),
+        ];
+      });
+
+      const periodLabel = PERIOD_FILTERS.find((p) => p.value === periodFilter)?.label || periodFilter;
+      const completedVolume = rows.filter((t) => t.status === 'completed').reduce((s, t) => s + (t.amount || 0), 0);
+      const dateStamp = new Date().toISOString().slice(0, 10);
+
+      const { downloadPDFReport } = await import('../../utils/pdf');
+      downloadPDFReport({
+        title: `Rapport des transactions — ${periodLabel}`,
+        subtitle: `${rows.length} transaction${rows.length > 1 ? 's' : ''} — Volume complété : ${formatCFA(completedVolume)}`,
+        headers,
+        rows: pdfRows,
+        filename: `transactions_apollonpay_${periodFilter}_${dateStamp}.pdf`,
+      });
+    } catch (e) {
+      setExportError(`Erreur lors de l'export : ${e.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Layout>
@@ -139,6 +225,30 @@ export default function AdminTransactions({ initialType = null }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Export rapport */}
+        <div className="card space-y-3">
+          <h3 className="text-white font-semibold text-sm">Télécharger un rapport</h3>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {PERIOD_FILTERS.map((f) => (
+              <button key={f.value} onClick={() => setPeriodFilter(f.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
+                  ${periodFilter === f.value ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs">
+            Applique les filtres statut / type / opérateur sélectionnés ci-dessus.
+          </p>
+          {exportError && <p className="text-red-400 text-xs">{exportError}</p>}
+          <button onClick={handleExport} disabled={exporting}
+            className="btn-primary w-full text-sm disabled:opacity-50">
+            {exporting
+              ? <RefreshCw className="w-4 h-4 animate-spin" />
+              : <><Download className="w-4 h-4" /> Télécharger PDF</>}
+          </button>
         </div>
 
         {/* Volume summary */}

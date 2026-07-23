@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Minus, Delete, History } from 'lucide-react';
+import { Plus, Minus, Delete, History, Clock } from 'lucide-react';
 import { WHATSAPP_NUMBER } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 
@@ -23,6 +23,8 @@ export default function Home() {
   const [amount, setAmount] = useState('');
 
   const selectedPlatform = PLATFORMS.find((p) => p.id === platform);
+  const isCanalPlus = platform === 'canalplus';
+  const isCanalbox = platform === 'canalbox';
 
   const handleKey = (key) => {
     if (key === 'del') {
@@ -39,6 +41,11 @@ export default function Home() {
   };
 
   const handleAction = (type) => {
+    if (isCanalbox) return;
+    if (isCanalPlus && type === 'deposit') {
+      navigate('/canal-plus');
+      return;
+    }
     const parsed = parseInt(amount) || 0;
     if (parsed < 100) return;
     navigate(`/${type}`, { state: { amount: parsed, platform } });
@@ -112,52 +119,77 @@ export default function Home() {
       {/* Numpad card */}
       <div className="flex-1 mx-4 mb-4">
         <div className="bg-white rounded-3xl shadow-xl shadow-black/10 p-5">
-          {/* Amount display */}
-          <div className="flex items-center justify-center mb-4">
-            <div className="inline-flex items-baseline gap-2 px-1 pb-2 border-b-2 border-primary-100">
-              <span className="text-4xl font-extrabold text-gray-900 tabular-nums tracking-tight">
-                {amount ? parseInt(amount).toLocaleString('fr-FR') : '0'}
-              </span>
-              <span className="text-base font-bold text-gray-400">FCFA</span>
+          {isCanalbox ? (
+            <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+                <Clock className="w-8 h-8 text-[#0072ce]" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-800 mb-1">CANALBOX — Bientôt disponible</p>
+                <p className="text-gray-500 text-sm max-w-xs">
+                  La recharge d'abonnement CANALBOX sera bientôt disponible directement depuis ApollonPay. Revenez très vite !
+                </p>
+              </div>
             </div>
-          </div>
+          ) : isCanalPlus ? (
+            <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
+              <div className="bg-black rounded-2xl px-6 py-3">
+                <span className="text-white font-extrabold text-2xl tracking-tight">CANAL<span className="align-super text-sm">+</span></span>
+              </div>
+              <p className="text-gray-500 text-sm max-w-xs">
+                Gérez votre abonnement CANAL+ directement depuis ApollonPay : choisissez votre offre, la durée et payez en un instant.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Amount display */}
+              <div className="flex items-center justify-center mb-4">
+                <div className="inline-flex items-baseline gap-2 px-1 pb-2 border-b-2 border-primary-100">
+                  <span className="text-4xl font-extrabold text-gray-900 tabular-nums tracking-tight">
+                    {amount ? parseInt(amount).toLocaleString('fr-FR') : '0'}
+                  </span>
+                  <span className="text-base font-bold text-gray-400">FCFA</span>
+                </div>
+              </div>
 
-          {/* Quick amounts */}
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
-            {QUICK_AMOUNTS.map((value) => (
-              <button
-                key={value}
-                onClick={() => handleQuickAmount(value)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 active:scale-95 ${
-                  amount === String(value)
-                    ? 'bg-primary-600 border-primary-600 text-white'
-                    : 'bg-primary-50 border-primary-100 text-primary-700 hover:bg-primary-100'
-                }`}
-              >
-                {value.toLocaleString('fr-FR')}
-              </button>
-            ))}
-          </div>
+              {/* Quick amounts */}
+              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                {QUICK_AMOUNTS.map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => handleQuickAmount(value)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 active:scale-95 ${
+                      amount === String(value)
+                        ? 'bg-primary-600 border-primary-600 text-white'
+                        : 'bg-primary-50 border-primary-100 text-primary-700 hover:bg-primary-100'
+                    }`}
+                  >
+                    {value.toLocaleString('fr-FR')}
+                  </button>
+                ))}
+              </div>
 
-          {/* Numpad grid */}
-          <div className="grid grid-cols-3 gap-3">
-            {PAD_KEYS.map((key) => (
-              <button
-                key={key}
-                onClick={() => handleKey(key)}
-                className={`
-                  flex items-center justify-center rounded-2xl text-2xl font-bold py-4
-                  border transition-all duration-150 active:scale-90 active:shadow-none
-                  ${key === 'del'
-                    ? 'bg-gradient-to-b from-orange-50 to-orange-100 border-orange-200/70 text-orange-500 shadow-sm shadow-orange-200/60'
-                    : 'bg-gradient-to-b from-gray-50 to-gray-100 border-gray-200/80 text-gray-900 shadow-sm shadow-gray-300/40 hover:from-white hover:to-gray-50'
-                  }
-                `}
-              >
-                {key === 'del' ? <Delete className="w-6 h-6" /> : key}
-              </button>
-            ))}
-          </div>
+              {/* Numpad grid */}
+              <div className="grid grid-cols-3 gap-3">
+                {PAD_KEYS.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => handleKey(key)}
+                    className={`
+                      flex items-center justify-center rounded-2xl text-2xl font-bold py-4
+                      border transition-all duration-150 active:scale-90 active:shadow-none
+                      ${key === 'del'
+                        ? 'bg-gradient-to-b from-orange-50 to-orange-100 border-orange-200/70 text-orange-500 shadow-sm shadow-orange-200/60'
+                        : 'bg-gradient-to-b from-gray-50 to-gray-100 border-gray-200/80 text-gray-900 shadow-sm shadow-gray-300/40 hover:from-white hover:to-gray-50'
+                      }
+                    `}
+                  >
+                    {key === 'del' ? <Delete className="w-6 h-6" /> : key}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -165,10 +197,15 @@ export default function Home() {
       <div className="flex gap-0 px-0 pb-0 sticky bottom-0">
         <button
           onClick={() => handleAction('deposit')}
-          className="flex-1 bg-gold-600 hover:bg-gold-700 text-white font-semibold py-5 flex items-center justify-center gap-2 text-base transition-all active:bg-gold-800"
+          disabled={isCanalbox}
+          className={`flex-1 font-semibold py-5 flex items-center justify-center gap-2 text-base transition-all ${
+            isCanalbox
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gold-600 hover:bg-gold-700 active:bg-gold-800 text-white'
+          }`}
         >
-          <Plus className="w-5 h-5" />
-          {isSubscription ? `Payer ${platformLabel}` : `Dépôt ${platformLabel}`}
+          {isCanalbox ? <Clock className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          {isCanalbox ? 'Bientôt disponible' : isSubscription ? `Payer ${platformLabel}` : `Dépôt ${platformLabel}`}
         </button>
         {!isSubscription && (
           <button

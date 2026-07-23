@@ -77,7 +77,14 @@
       "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
       "Bash(magick -version)",
       "Bash(convert -version)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "WebFetch(domain:www.canalplus-afrique.com)",
+      "WebFetch(domain:www.canalbox.bf)",
+      "Bash(xargs wc -l)",
+      "Bash(python3 -c ' *)",
+      "PowerShell(py *)",
+      "Bash(npm install *)",
+      "Bash(vercel --version)"
     ]
   }
 }

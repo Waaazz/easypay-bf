@@ -50,7 +50,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
   const handleCancel = async () => {
     if (!cancelReason.trim()) return;
     setLoading(true);
-    await onCancel(transaction.id, cancelReason);
+    await onCancel(transaction.id, cancelReason, agentName);
     setLoading(false);
   };
 
@@ -137,6 +137,26 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                 <p className="text-gray-500 text-xs mb-1">Votre numéro {operator?.name}</p>
                 <span className="text-white text-sm font-medium">{transaction.agentOperatorNumber}</span>
               </div>
+            )}
+            {transaction.platform === 'canalplus' && (
+              <>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+                  <p className="text-gray-500 text-xs mb-1">Titulaire décodeur</p>
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-white text-sm font-medium truncate">
+                      {transaction.holderName || '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+                  <p className="text-gray-500 text-xs mb-1">Offre à recharger</p>
+                  <span className="text-white text-sm font-bold">
+                    {transaction.offerName} — {transaction.durationLabel}
+                    {transaction.optionName && transaction.optionName !== 'Aucune option' ? ` + ${transaction.optionName}` : ''}
+                  </span>
+                </div>
+              </>
             )}
             {!isDeposit && (
               <>
@@ -249,7 +269,17 @@ export default function AgentDashboard() {
     setToggling(false);
   };
 
-  const pending    = transactions.filter(t => t.status === 'pending' || t.status === 'awaiting_confirmation');
+  // Une commande non assignée (assignedAgentId null, cas de repli quand aucun
+  // agent n'était disponible à sa création) ne doit être proposée qu'aux
+  // agents actuellement disponibles — sinon un agent qui vient de se mettre
+  // indisponible continue de recevoir de nouvelles demandes en diffusion.
+  // Une commande qui lui est explicitement assignée reste visible dans tous
+  // les cas, y compris s'il passe indisponible en cours de traitement.
+  const pending = transactions.filter(t => {
+    if (t.status !== 'pending' && t.status !== 'awaiting_confirmation') return false;
+    const isMine = t.assignedAgentId === userProfile?.uid;
+    return isMine || isAvailable;
+  });
   const processing = transactions.filter(t => t.status === 'processing');
 
   const displayed = activeTab === 'pending'    ? pending

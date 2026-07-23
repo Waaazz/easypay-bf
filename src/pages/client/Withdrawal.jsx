@@ -204,8 +204,8 @@ export default function Withdrawal() {
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3">
           <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <p className="text-blue-700 text-sm leading-relaxed">
-            Avant de continuer, allez sur <strong>{platformLabel}</strong> et sélectionnez{' '}
-            <strong>«&nbsp;Express Multi service&nbsp;»</strong> comme point de retrait pour générer votre code.
+            Avant de continuer, allez sur <strong>{platformLabel}</strong>, choisissez la ville{' '}
+            <strong>Ouagadougou</strong> et la rue <strong>SSI ANTOINE (24/7)</strong>, puis validez pour générer votre code.
           </p>
         </div>
 
@@ -276,8 +276,9 @@ export default function Withdrawal() {
           <ol className="text-blue-600 text-sm space-y-1 list-decimal list-inside">
             <li>Ouvrez <strong>{platformLabel}</strong></li>
             <li>Allez dans <strong>Retrait</strong></li>
-            <li>Sélectionnez <strong>Express Multi service</strong></li>
             <li>Entrez <strong>{amount.toLocaleString('fr-FR')} FCFA</strong></li>
+            <li>Choisissez la ville <strong>Ouagadougou</strong> et la rue <strong>SSI ANTOINE (24/7)</strong></li>
+            <li>Validez pour obtenir votre code</li>
             <li>Copiez le code généré ci-dessous</li>
           </ol>
         </div>

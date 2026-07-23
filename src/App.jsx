@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import ClientDashboard from './pages/client/Dashboard';
 import Deposit from './pages/client/Deposit';
 import Withdrawal from './pages/client/Withdrawal';
+import CanalPlus from './pages/client/CanalPlus';
 import History from './pages/client/History';
 import AgentLogin from './pages/agent/Login';
 import AgentDashboard from './pages/agent/Dashboard';
@@ -34,6 +35,7 @@ export default function App() {
         {/* Client routes */}
         <Route path="/deposit"    element={<Deposit />} />
         <Route path="/withdrawal" element={<Withdrawal />} />
+        <Route path="/canal-plus" element={<CanalPlus />} />
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['client']}>
             <ClientDashboard />

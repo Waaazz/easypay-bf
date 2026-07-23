@@ -6,19 +6,18 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
   Users, UserCheck, UserX, Shield, Phone,
   RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil,
-  ArrowDownCircle, ArrowUpCircle, TrendingUp, Trash2, AlertTriangle,
-  Wifi, WifiOff,
+  Archive, ArchiveRestore, AlertTriangle,
+  Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
-import { formatDate, formatCFA } from '../../utils/formatters';
+import { formatDate, formatCFA, formatRelativeTime } from '../../utils/formatters';
 
 const OPERATOR_LABELS = {
   orange:  { emoji: '🟠', name: 'Orange Money' },
@@ -27,12 +26,13 @@ const OPERATOR_LABELS = {
 };
 
 const RANK_MEDAL = ['🥇', '🥈', '🥉'];
+const ACTIVE_STATUSES = ['pending', 'awaiting_confirmation', 'processing'];
 
-// ─── Modal confirmation suppression ──────────────────────────────────────────
-function DeleteAgentModal({ agent, onClose, onConfirm }) {
+// ─── Modal confirmation archivage ────────────────────────────────────────────
+function ArchiveAgentModal({ agent, onClose, onConfirm }) {
   const [loading, setLoading] = useState(false);
 
-  const handleDelete = async () => {
+  const handleArchive = async () => {
     setLoading(true);
     await onConfirm(agent.uid);
     setLoading(false);
@@ -43,22 +43,22 @@ function DeleteAgentModal({ agent, onClose, onConfirm }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="card w-full max-w-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-5 h-5 text-red-400" />
+          <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Archive className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-white font-semibold">Supprimer l'agent</h3>
-            <p className="text-gray-500 text-xs">Cette action est irréversible</p>
+            <h3 className="text-white font-semibold">Archiver l'agent</h3>
+            <p className="text-gray-500 text-xs">Réversible — l'historique des transactions est conservé</p>
           </div>
         </div>
         <p className="text-gray-400 text-sm mb-5">
-          Voulez-vous vraiment supprimer <span className="text-white font-medium">{agent.name}</span> ?
+          Voulez-vous archiver <span className="text-white font-medium">{agent.name}</span> ? Il n'apparaîtra plus dans la liste active et ne recevra plus de nouvelles commandes, mais son compte et son historique restent intacts. Vous pourrez le réactiver à tout moment.
         </p>
         <div className="flex gap-2">
           <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
-          <button onClick={handleDelete} disabled={loading}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Supprimer</>}
+          <button onClick={handleArchive} disabled={loading}
+            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Archive className="w-4 h-4" /> Archiver</>}
           </button>
         </div>
       </div>
@@ -66,9 +66,25 @@ function DeleteAgentModal({ agent, onClose, onConfirm }) {
   );
 }
 
+// ─── Petit indicateur de statut (point coloré + texte) ───────────────────────
+function StatusDot({ color, label }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs">
+      <span className={`w-1.5 h-1.5 rounded-full ${color} flex-shrink-0`} />
+      {label}
+    </span>
+  );
+}
+
 // ─── Carte agent ─────────────────────────────────────────────────────────────
-function AgentCard({ agent, onToggle, onEdit, onDelete, stats, rank }) {
+// Vue résumée par défaut (identité, statut, stats essentielles) + détails
+// dépliables (numéros, historique, actions secondaires) pour ne pas noyer
+// l'admin sous l'information. Les alertes ne s'affichent que si elles sont
+// réellement pertinentes (charge élevée, taux d'annulation anormal, agent
+// indisponible depuis longtemps) plutôt que d'empiler des badges en continu.
+function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank }) {
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const handleToggle = async () => {
     setLoading(true);
@@ -79,109 +95,168 @@ function AgentCard({ agent, onToggle, onEdit, onDelete, stats, rank }) {
   const operatorEntries = Object.entries(agent.operators || {}).filter(([, v]) => v);
   const missingOperators = operatorEntries.length === 0;
 
+  const completedTotal = (stats?.deposits ?? 0) + (stats?.withdrawals ?? 0);
+  const cancelledTotal = stats?.cancelled ?? 0;
+  const cancelRate = (completedTotal + cancelledTotal) > 0
+    ? Math.round((cancelledTotal / (completedTotal + cancelledTotal)) * 100)
+    : 0;
+  const byOperator = stats?.byOperator || {};
+
+  const hoursSinceUnavailable = agent.active && !agent.available && agent.availabilityChangedAt?.toMillis
+    ? (Date.now() - agent.availabilityChangedAt.toMillis()) / 3_600_000
+    : 0;
+
+  const alerts = [];
+  if (activeLoad >= 3) alerts.push(`${activeLoad} commandes en attente pour cet agent`);
+  if (cancelledTotal >= 2 && cancelRate >= 20) alerts.push(`Taux d'annulation élevé (${cancelRate}%)`);
+  if (hoursSinceUnavailable >= 2) {
+    alerts.push(`Indisponible ${formatRelativeTime(agent.availabilityChangedAt).toLowerCase()}`);
+  }
+
   return (
     <div className="card hover:border-gray-700 transition-all">
-      <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
-          ${agent.active ? 'bg-primary-500/10' : 'bg-gray-800'}`}>
-          <Shield className={`w-6 h-6 ${agent.active ? 'text-primary-400' : 'text-gray-500'}`} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {rank <= 3 && (
-              <span className="text-base" title={`#${rank} au classement`}>{RANK_MEDAL[rank - 1]}</span>
-            )}
-            <span className="text-white font-semibold">{agent.name || 'Agent'}</span>
-            {agent.active
-              ? <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/20">Actif</span>
-              : <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">Inactif</span>
-            }
-            {agent.active && (
-              agent.available
-                ? <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 flex items-center gap-1">
-                    <Wifi className="w-3 h-3" /> Disponible
-                  </span>
-                : <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full border border-gray-700 flex items-center gap-1">
-                    <WifiOff className="w-3 h-3" /> Indisponible
-                  </span>
-            )}
+      <div className="flex items-start gap-3">
+        {/* Zone cliquable : identité + résumé */}
+        <button onClick={() => setExpanded(v => !v)} className="flex-1 min-w-0 flex items-start gap-3 text-left">
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0
+            ${agent.active ? 'bg-primary-500/10' : 'bg-gray-800'}`}>
+            <Shield className={`w-5 h-5 ${agent.active ? 'text-primary-400' : 'text-gray-500'}`} />
           </div>
 
-          <div className="flex items-center gap-2 mt-1">
-            <Phone className="w-3.5 h-3.5 text-gray-500" />
-            <span className="text-gray-400 text-sm">{agent.phone}</span>
-          </div>
-
-          {/* Numéros opérateurs */}
-          <div className="mt-2 space-y-1.5">
-            {missingOperators ? (
-              <button onClick={() => onEdit(agent)}
-                className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20 flex items-center gap-1">
-                <Pencil className="w-3 h-3" /> Ajouter les numéros Mobile Money
-              </button>
-            ) : (
-              operatorEntries.map(([opId, number]) => (
-                <div key={opId} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-lg">
-                    {OPERATOR_LABELS[opId]?.emoji} {number}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Stats de performance */}
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-800/60">
-            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                <ArrowDownCircle className="w-3 h-3 text-green-400" />
-                <p className="text-green-400 font-bold text-sm">{stats?.deposits ?? 0}</p>
-              </div>
-              <p className="text-gray-600 text-xs">Dépôts</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              {rank <= 3 && (
+                <span className="text-sm" title={`#${rank} au classement`}>{RANK_MEDAL[rank - 1]}</span>
+              )}
+              <span className="text-white font-semibold truncate">{agent.name || 'Agent'}</span>
             </div>
-            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                <ArrowUpCircle className="w-3 h-3 text-red-400" />
-                <p className="text-red-400 font-bold text-sm">{stats?.withdrawals ?? 0}</p>
-              </div>
-              <p className="text-gray-600 text-xs">Retraits</p>
-            </div>
-            <div className="bg-gray-800/60 rounded-xl px-2 py-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                <TrendingUp className="w-3 h-3 text-primary-400" />
-                <p className="text-primary-400 font-bold text-xs">{formatCFA(stats?.totalAmount ?? 0)}</p>
-              </div>
-              <p className="text-gray-600 text-xs">Traités</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3 mt-2">
-            <button onClick={() => onEdit(agent)}
-              className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
-              <Pencil className="w-3 h-3" /> Modifier numéros
-            </button>
-            <button onClick={() => onDelete(agent)}
-              className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors">
-              <Trash2 className="w-3 h-3" /> Supprimer
-            </button>
-            {agent.createdAt && (
-              <span className="text-gray-700 text-xs">· Inscrit le {formatDate(agent.createdAt)}</span>
-            )}
-          </div>
-        </div>
+            <div className="flex items-center gap-3 mt-1">
+              <StatusDot color={agent.active ? 'bg-green-400' : 'bg-red-400'} label={agent.active ? 'Actif' : 'Inactif'} />
+              {agent.active && (
+                <StatusDot color={agent.available ? 'bg-emerald-400' : 'bg-gray-500'}
+                  label={agent.available ? 'Disponible' : 'Indisponible'} />
+              )}
+            </div>
 
-        <button onClick={handleToggle} disabled={loading}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0
-            ${agent.active
-              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
-              : 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20'
-            } disabled:opacity-50`}>
-          {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            : agent.active ? <><UserX className="w-3.5 h-3.5" /> Désactiver</>
-            : <><UserCheck className="w-3.5 h-3.5" /> Activer</>}
+            <p className="text-gray-500 text-xs mt-1.5">
+              {stats?.deposits ?? 0} dépôts · {stats?.withdrawals ?? 0} retraits ·{' '}
+              <span className="text-primary-400 font-medium">{formatCFA(stats?.totalAmount ?? 0)}</span> traités
+            </p>
+          </div>
         </button>
+
+        {/* Actions rapides */}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <button onClick={handleToggle} disabled={loading}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+              ${agent.active
+                ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                : 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20'
+              } disabled:opacity-50`}>
+            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              : agent.active ? <><UserX className="w-3.5 h-3.5" /> Désactiver</>
+              : <><UserCheck className="w-3.5 h-3.5" /> Activer</>}
+          </button>
+          <button onClick={() => setExpanded(v => !v)} className="text-gray-600 hover:text-gray-400 p-1">
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
+
+      {/* Alertes ciblées, seulement si pertinentes */}
+      {alerts.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {alerts.map((a, i) => (
+            <div key={i} className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <span className="text-amber-300 text-xs">{a}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {missingOperators && (
+        <button onClick={() => onEdit(agent)}
+          className="mt-3 w-full text-xs text-amber-400 bg-amber-400/10 px-3 py-2 rounded-lg border border-amber-400/20 flex items-center justify-center gap-1.5">
+          <Pencil className="w-3 h-3" /> Ajouter les numéros Mobile Money
+        </button>
+      )}
+
+      {/* Détails dépliés */}
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-gray-800/60 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+              <Phone className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" /> {agent.phone}
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+              <Clock className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+              {agent.lastLoginAt
+                ? `Connecté ${formatRelativeTime(agent.lastLoginAt).toLowerCase()}`
+                : 'Jamais connecté'}
+            </div>
+          </div>
+
+          {!missingOperators && (
+            <div className="flex flex-wrap gap-2">
+              {operatorEntries.map(([opId, number]) => (
+                <span key={opId} className="text-xs text-gray-300 bg-gray-800 px-2.5 py-1.5 rounded-lg">
+                  {OPERATOR_LABELS[opId]?.emoji} {number}
+                  {byOperator[opId]?.count > 0 && <span className="text-gray-500"> · {byOperator[opId].count} traitées</span>}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {stats?.lastActivityAt && (
+            <p className="text-gray-600 text-xs">
+              Dernière commande traitée {formatRelativeTime(stats.lastActivityAt).toLowerCase()}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-4">
+              <button onClick={() => onEdit(agent)}
+                className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
+                <Pencil className="w-3 h-3" /> Modifier numéros
+              </button>
+              <button onClick={() => onArchive(agent)}
+                className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors">
+                <Archive className="w-3 h-3" /> Archiver
+              </button>
+            </div>
+            {agent.createdAt && (
+              <span className="text-gray-700 text-xs">Inscrit le {formatDate(agent.createdAt)}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Carte agent archivé ──────────────────────────────────────────────────────
+function ArchivedAgentCard({ agent, onReactivate }) {
+  const [loading, setLoading] = useState(false);
+  const handleReactivate = async () => {
+    setLoading(true);
+    await onReactivate(agent.uid);
+    setLoading(false);
+  };
+  return (
+    <div className="card flex items-center gap-4 opacity-75">
+      <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
+        <Archive className="w-5 h-5 text-gray-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-300 font-medium text-sm">{agent.name || 'Agent'}</p>
+        <p className="text-gray-600 text-xs">{agent.phone}</p>
+      </div>
+      <button onClick={handleReactivate} disabled={loading}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 disabled:opacity-50 flex-shrink-0">
+        {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><ArchiveRestore className="w-3.5 h-3.5" /> Réactiver</>}
+      </button>
     </div>
   );
 }
@@ -409,8 +484,10 @@ export default function AdminAgents() {
   const [search,        setSearch]        = useState('');
   const [showCreate,    setShowCreate]    = useState(false);
   const [editingAgent,  setEditingAgent]  = useState(null);
-  const [deletingAgent, setDeletingAgent] = useState(null);
+  const [archivingAgent, setArchivingAgent] = useState(null);
   const [agentStats,    setAgentStats]    = useState({});
+  const [activeLoad,    setActiveLoad]    = useState({});
+  const [showArchived,  setShowArchived]  = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'users'), where('role', '==', 'agent'));
@@ -420,20 +497,51 @@ export default function AdminAgents() {
     });
   }, []);
 
-  // Calcule les stats de performance par agent (transactions terminées)
+  // Stats de performance par agent : transactions terminées (dépôts/retraits,
+  // montant, répartition par opérateur, dernière activité) et annulées (taux
+  // d'annulation).
   useEffect(() => {
-    const q = query(collection(db, 'transactions'), where('status', '==', 'completed'));
-    return onSnapshot(q, (snap) => {
+    const qDone = query(collection(db, 'transactions'), where('status', 'in', ['completed', 'cancelled']));
+    return onSnapshot(qDone, (snap) => {
       const stats = {};
       snap.docs.forEach(d => {
-        const { agentId, type, amount } = d.data();
+        const { agentId, type, amount, operator, status, updatedAt } = d.data();
         if (!agentId) return;
-        if (!stats[agentId]) stats[agentId] = { deposits: 0, withdrawals: 0, totalAmount: 0 };
-        if (type === 'deposit')    stats[agentId].deposits++;
-        else                       stats[agentId].withdrawals++;
-        stats[agentId].totalAmount += (amount || 0);
+        if (!stats[agentId]) {
+          stats[agentId] = { deposits: 0, withdrawals: 0, cancelled: 0, totalAmount: 0, byOperator: {}, lastActivityAt: null };
+        }
+        const s = stats[agentId];
+        if (status === 'cancelled') {
+          s.cancelled++;
+        } else {
+          if (type === 'deposit') s.deposits++;
+          else s.withdrawals++;
+          s.totalAmount += (amount || 0);
+          if (operator) {
+            if (!s.byOperator[operator]) s.byOperator[operator] = { count: 0 };
+            s.byOperator[operator].count++;
+          }
+        }
+        const t = updatedAt?.toMillis ? updatedAt.toMillis() : 0;
+        if (!s.lastActivityAt || t > (s.lastActivityAt.toMillis?.() || 0)) {
+          s.lastActivityAt = updatedAt || s.lastActivityAt;
+        }
       });
       setAgentStats(stats);
+    });
+  }, []);
+
+  // Charge de travail actuelle : commandes non terminées assignées à chaque agent.
+  useEffect(() => {
+    const qActive = query(collection(db, 'transactions'), where('status', 'in', ACTIVE_STATUSES));
+    return onSnapshot(qActive, (snap) => {
+      const load = {};
+      snap.docs.forEach(d => {
+        const { assignedAgentId } = d.data();
+        if (!assignedAgentId) return;
+        load[assignedAgentId] = (load[assignedAgentId] || 0) + 1;
+      });
+      setActiveLoad(load);
     });
   }, []);
 
@@ -441,11 +549,29 @@ export default function AdminAgents() {
     await updateDoc(doc(db, 'users', uid), { active, updatedAt: serverTimestamp() });
   };
 
-  const deleteAgent = async (uid) => {
-    await deleteDoc(doc(db, 'users', uid));
+  // Archivage réversible : on désactive et on marque l'agent comme archivé
+  // plutôt que de supprimer son document, pour conserver l'attribution de
+  // son historique de transactions déjà traité.
+  const archiveAgent = async (uid) => {
+    await updateDoc(doc(db, 'users', uid), {
+      archived: true,
+      active: false,
+      available: false,
+      updatedAt: serverTimestamp(),
+    });
   };
 
-  const filtered = agents
+  const reactivateAgent = async (uid) => {
+    await updateDoc(doc(db, 'users', uid), {
+      archived: false,
+      updatedAt: serverTimestamp(),
+    });
+  };
+
+  const liveAgents = agents.filter(a => !a.archived);
+  const archivedAgents = agents.filter(a => a.archived);
+
+  const filtered = liveAgents
     .filter(a => {
       if (!search) return true;
       const q = search.toLowerCase();
@@ -457,8 +583,8 @@ export default function AdminAgents() {
       return bTotal - aTotal; // meilleur en premier
     });
 
-  const activeCount = agents.filter(a => a.active).length;
-  const missingCount = agents.filter(a => !a.operators || Object.keys(a.operators).length === 0).length;
+  const activeCount = liveAgents.filter(a => a.active).length;
+  const missingCount = liveAgents.filter(a => !a.operators || Object.keys(a.operators).length === 0).length;
 
   return (
     <Layout>
@@ -467,7 +593,7 @@ export default function AdminAgents() {
           <div>
             <h1 className="page-title">Gestion des agents</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {activeCount} actif{activeCount !== 1 ? 's' : ''} sur {agents.length}
+              {activeCount} actif{activeCount !== 1 ? 's' : ''} sur {liveAgents.length}
             </p>
           </div>
           <button onClick={() => setShowCreate(true)} className="btn-primary text-sm py-2">
@@ -478,7 +604,7 @@ export default function AdminAgents() {
         {/* Alerte agents sans numéros */}
         {missingCount > 0 && (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 flex items-center gap-3">
-            <span className="text-lg">⚠</span>
+            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
             <p className="text-amber-300 text-sm">
               <span className="font-semibold">{missingCount} agent{missingCount > 1 ? 's' : ''}</span> sans numéros Mobile Money configurés.
               Cliquez sur <span className="font-semibold">"Ajouter numéros"</span> pour que les dépôts leur soient assignés.
@@ -503,7 +629,7 @@ export default function AdminAgents() {
             </div>
             <div>
               <p className="text-gray-500 text-xs">Agents inactifs</p>
-              <p className="text-white font-bold text-xl">{agents.length - activeCount}</p>
+              <p className="text-white font-bold text-xl">{liveAgents.length - activeCount}</p>
             </div>
           </div>
         </div>
@@ -546,10 +672,30 @@ export default function AdminAgents() {
               <AgentCard key={agent.uid} agent={agent}
                 onToggle={toggleAgent}
                 onEdit={setEditingAgent}
-                onDelete={setDeletingAgent}
+                onArchive={setArchivingAgent}
                 stats={agentStats[agent.uid]}
+                activeLoad={activeLoad[agent.uid] || 0}
                 rank={index + 1} />
             ))}
+          </div>
+        )}
+
+        {/* Agents archivés */}
+        {archivedAgents.length > 0 && (
+          <div>
+            <button onClick={() => setShowArchived(v => !v)}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors">
+              <Archive className="w-4 h-4" />
+              Agents archivés ({archivedAgents.length})
+              {showArchived ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {showArchived && (
+              <div className="space-y-2 mt-3">
+                {archivedAgents.map(agent => (
+                  <ArchivedAgentCard key={agent.uid} agent={agent} onReactivate={reactivateAgent} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -561,11 +707,11 @@ export default function AdminAgents() {
           onClose={() => setEditingAgent(null)}
         />
       )}
-      {deletingAgent && (
-        <DeleteAgentModal
-          agent={deletingAgent}
-          onClose={() => setDeletingAgent(null)}
-          onConfirm={deleteAgent}
+      {archivingAgent && (
+        <ArchiveAgentModal
+          agent={archivingAgent}
+          onClose={() => setArchivingAgent(null)}
+          onConfirm={archiveAgent}
         />
       )}
     </Layout>
