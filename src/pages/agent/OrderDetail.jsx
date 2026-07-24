@@ -19,6 +19,7 @@ import { useTransactionActions } from '../../hooks/useTransactions';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import OperatorLogo from '../../components/OperatorLogo';
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -140,7 +141,11 @@ export default function OrderDetail() {
               { icon: CreditCard, label: 'Montant',   value: formatCFA(transaction.amount) },
               { icon: CreditCard, label: 'Plateforme',value: transaction.platform?.toUpperCase() },
               { icon: User,       label: 'ID compte', value: transaction.accountId },
-              { icon: CreditCard, label: 'Opérateur', value: `${operator?.logo || ''} ${operator?.name || '—'}` },
+              { icon: CreditCard, label: 'Opérateur', value: (
+                <span className="inline-flex items-center gap-1.5">
+                  <OperatorLogo operator={operator} className="h-4" boxed /> {operator?.name || '—'}
+                </span>
+              ) },
               isDeposit
                 ? { icon: Phone, label: 'N° client',  value: `+226 ${transaction.clientPhone || '—'}` }
                 : { icon: Phone, label: 'N° Orange',  value: `+226 ${transaction.phone || '—'}` },

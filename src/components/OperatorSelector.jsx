@@ -1,5 +1,6 @@
 import React from 'react';
 import { OPERATORS } from '../utils/constants';
+import OperatorLogo from './OperatorLogo';
 
 export default function OperatorSelector({ selected, onSelect }) {
   return (
@@ -15,7 +16,7 @@ export default function OperatorSelector({ selected, onSelect }) {
               : 'border-gray-700 bg-gray-800 hover:border-gray-500'
             }`}
         >
-          <span className="text-2xl">{op.logo}</span>
+          <OperatorLogo operator={op} className="h-8" boxed />
           <div className="text-left">
             <p className="text-sm font-semibold text-white">{op.name}</p>
           </div>

@@ -84,7 +84,10 @@
       "Bash(python3 -c ' *)",
       "PowerShell(py *)",
       "Bash(npm install *)",
-      "Bash(vercel --version)"
+      "Bash(vercel --version)",
+      "Bash(cp \"C:\\\\Users\\\\Z book\\\\Downloads\\\\orange money.png\" \"public/assets/operators/orange-money.png\")",
+      "Bash(cp \"C:\\\\Users\\\\Z book\\\\Downloads\\\\telecel money.png\" \"public/assets/operators/telecel-money.png\")",
+      "Bash(cp \"C:\\\\Users\\\\Z book\\\\Downloads\\\\moov money.png\" \"public/assets/operators/moov-money.png\")"
     ]
   }
 }

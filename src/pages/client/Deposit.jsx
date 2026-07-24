@@ -12,6 +12,7 @@ import {
   AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER, DEPOSIT_SESSION_MINUTES,
 } from '../../utils/constants';
 import WaitingCountdown from '../../components/WaitingCountdown';
+import OperatorLogo from '../../components/OperatorLogo';
 
 // ─── Étapes ────────────────────────────────────────────────────────────────
 const S = { ACCOUNT_ID: 0, CHOOSE_OP: 1, CLIENT_PHONE: 2, PAYMENT: 3, WAITING: 4, SUCCESS: 5 };
@@ -234,7 +235,7 @@ export default function Deposit() {
                     disabled={loadingAgents || !available}
                     className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left
                       ${available ? `${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98]` : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'}`}>
-                    <span className="text-2xl">{op.logo}</span>
+                    <OperatorLogo operator={op} className="h-8" />
                     <div className="flex-1">
                       <p className={`font-bold text-base ${available ? op.text : 'text-gray-400'}`}>{op.name}</p>
                       {loadingAgents
@@ -295,7 +296,7 @@ export default function Deposit() {
 
           {/* Opérateur sélectionné */}
           <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${operator.bg} ${operator.border}`}>
-            <span className="text-xl">{operator.logo}</span>
+            <OperatorLogo operator={operator} className="h-6" />
             <div>
               <p className={`font-semibold text-sm ${operator.text}`}>{operator.name}</p>
               <p className="text-gray-500 text-xs">Opérateur sélectionné</p>
@@ -372,7 +373,7 @@ export default function Deposit() {
             </p>
             <div className={`flex items-center justify-between px-4 py-4 rounded-2xl border-2 ${operator.bg} ${operator.border}`}>
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{operator.logo}</span>
+                <OperatorLogo operator={operator} className="h-8" />
                 <div>
                   <p className={`text-xs font-semibold ${operator.text}`}>{operator.name}</p>
                   <p className="text-xl font-bold text-gray-800 tracking-wide">{displayNumber}</p>
@@ -484,7 +485,7 @@ export default function Deposit() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Opérateur</span>
-              <span className="font-bold">{operator.logo} {operator.name}</span>
+              <span className="font-bold flex items-center gap-1.5"><OperatorLogo operator={operator} className="h-4" boxed /> {operator.name}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Compte {platformLabel}</span>

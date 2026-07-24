@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
+import OperatorLogo from '../../components/OperatorLogo';
 import { db } from '../../firebase/config';
 import { useAdminTransactions } from '../../hooks/useTransactions';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
@@ -53,7 +54,7 @@ const TYPE_FILTERS = [
 // par l'app et qui dupliquaient certains noms).
 const ALL_OPERATORS = [
   { label: 'Tous', value: null },
-  ...AGENT_NUMBERS.map(o => ({ label: `${o.logo} ${o.name}`, value: o.id })),
+  ...AGENT_NUMBERS.map(o => ({ label: o.name, value: o.id, icon: o.icon })),
 ];
 
 // Badge opérateur coloré
@@ -68,8 +69,8 @@ function OperatorBadge({ operator }) {
     wave:    'bg-sky-500/15 text-sky-400 border-sky-500/20',
   };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[operator.id] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-      {operator.logo} {operator.name}
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[operator.id] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+      <OperatorLogo operator={operator} className="h-3.5" boxed /> {operator.name}
     </span>
   );
 }
@@ -219,8 +220,9 @@ export default function AdminTransactions({ initialType = null }) {
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {ALL_OPERATORS.map((f) => (
               <button key={f.label} onClick={() => setOperatorFilter(f.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5
                   ${operatorFilter === f.value ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                {f.icon && <OperatorLogo operator={{ icon: f.icon, name: f.label }} className="h-3.5" boxed />}
                 {f.label}
               </button>
             ))}

@@ -3,6 +3,7 @@ import { X, CreditCard, User, Calendar, Phone } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { formatCFA, formatDate, formatTxId } from '../utils/formatters';
 import { OPERATORS } from '../utils/constants';
+import OperatorLogo from './OperatorLogo';
 
 export default function TransactionDetailModal({ transaction, onClose }) {
   if (!transaction) return null;
@@ -14,7 +15,11 @@ export default function TransactionDetailModal({ transaction, onClose }) {
     { icon: CreditCard, label: 'Type', value: isDeposit ? 'Dépôt' : 'Retrait' },
     { icon: CreditCard, label: 'Montant', value: formatCFA(transaction.amount) },
     { icon: CreditCard, label: 'Plateforme', value: transaction.platform?.toUpperCase() || '—' },
-    { icon: CreditCard, label: 'Opérateur', value: `${operator?.logo || ''} ${operator?.name || '—'}` },
+    { icon: CreditCard, label: 'Opérateur', value: (
+      <span className="inline-flex items-center gap-1.5">
+        <OperatorLogo operator={operator} className="h-4" boxed /> {operator?.name || '—'}
+      </span>
+    ) },
     ...(transaction.accountId ? [{ icon: User, label: 'ID compte', value: transaction.accountId }] : []),
     ...(transaction.phone ? [{ icon: Phone, label: 'Téléphone', value: transaction.phone }] : []),
     { icon: Calendar, label: 'Date', value: formatDate(transaction.createdAt) },

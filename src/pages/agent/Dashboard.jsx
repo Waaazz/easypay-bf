@@ -11,6 +11,7 @@ import { useAgentTransactions, useTransactionActions, setAgentAvailability } fro
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import OperatorLogo from '../../components/OperatorLogo';
 import {
   isNotificationSupported, getNotificationPermission, requestNotificationPermission,
 } from '../../utils/notifications';
@@ -78,7 +79,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-primary-400 font-bold">{formatCFA(transaction.amount)}</span>
             {operator && (
-              <span className="text-gray-500 text-xs">• {operator.logo} {operator.name}</span>
+              <span className="text-gray-500 text-xs flex items-center gap-1">• <OperatorLogo operator={operator} className="h-3.5" boxed /> {operator.name}</span>
             )}
           </div>
         </div>

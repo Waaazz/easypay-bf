@@ -10,6 +10,7 @@ import StatusBadge from '../../components/StatusBadge';
 import { db, auth } from '../../firebase/config';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import OperatorLogo from '../../components/OperatorLogo';
 
 export default function AgentOrders() {
   const [orders, setOrders] = useState([]);
@@ -139,7 +140,11 @@ export default function AgentOrders() {
                         <span className="text-gray-600 text-xs">{formatTxId(tx.id)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {operator && <span className="text-gray-500 text-xs">{operator.logo} {operator.name}</span>}
+                        {operator && (
+                          <span className="text-gray-500 text-xs flex items-center gap-1">
+                            <OperatorLogo operator={operator} className="h-3.5" boxed /> {operator.name}
+                          </span>
+                        )}
                         <span className="text-gray-600 text-xs">•</span>
                         <span className="text-gray-600 text-xs">{tx.platform?.toUpperCase()}</span>
                         <span className="text-gray-600 text-xs">•</span>

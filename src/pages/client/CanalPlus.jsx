@@ -9,6 +9,7 @@ import { db } from '../../firebase/config';
 import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
 import { AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER } from '../../utils/constants';
 import WaitingCountdown from '../../components/WaitingCountdown';
+import OperatorLogo from '../../components/OperatorLogo';
 
 const RECENT_KEY = 'canalplus_recent_decoders';
 
@@ -25,11 +26,6 @@ const OFFERS = [
 
 const DURATIONS = [
   { id: '30j', label: '30 jours', months: 1 },
-  { id: '60j', label: '60 jours', months: 2 },
-  { id: '1m',  label: '1 mois',   months: 1 },
-  { id: '2m',  label: '2 mois',   months: 2 },
-  { id: '3m',  label: '3 mois',   months: 3 },
-  { id: '6m',  label: '6 mois',   months: 6 },
   { id: '12m', label: '12 mois',  months: 12 },
 ];
 
@@ -37,12 +33,16 @@ const OPTIONS = [
   { id: 'none', name: 'Aucune option', desc: '', price: 0 },
   { id: 'english-plus', name: 'ENGLISH PLUS ACCESS+', price: 5000,
     desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' },
+  { id: 'charme', name: 'CHARME', price: 5000,
+    desc: 'Toutes les chaînes de CANAL+ : Dorcel, Africa, Penthouse Black TV, Vixen, XXL.' },
   { id: 'promo', name: 'PROMO DU MOMENT', desc: '', price: 0 },
   { id: 'netflix-basic', name: 'NETFLIX BASIC (1S)', price: 4000,
     desc: 'Accédez au catalogue complet de Netflix avec 1 utilisateur en simultané.' },
   { id: 'netflix-standard', name: 'NETFLIX STANDARD (2S)', price: 6000,
     desc: 'Accédez au catalogue complet de Netflix avec 2 utilisateurs en simultanés.' },
 ];
+
+const FEE = 100;
 
 const S = { DECODER: 0, FORM: 1, CHOOSE_OP: 2, CLIENT_PHONE: 3, PAYMENT: 4, WAITING: 5, SUCCESS: 6 };
 
@@ -164,6 +164,7 @@ export default function CanalPlus() {
   const [txId, setTxId] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [cancelled, setCancelled] = useState(false);
+  const [showUssdCode, setShowUssdCode] = useState(false);
   const [assignedAgentNumber, setAssignedAgentNumber] = useState('');
   const [selectedAgentConfig, setSelectedAgentConfig] = useState(null);
   const [loadingAgents, setLoadingAgents] = useState(true);
@@ -194,6 +195,7 @@ export default function CanalPlus() {
   }, []);
 
   const total = offer.price * duration.months + (withOption ? (option?.price || 0) : 0);
+  const totalWithFee = total + FEE;
 
   const handleDecoderNext = () => {
     const digits = decoder.replace(/\D/g, '');
@@ -333,9 +335,19 @@ export default function CanalPlus() {
         )}
 
         {/* Total */}
-        <div className="bg-[#316516] rounded-2xl p-4 flex items-center justify-between">
-          <span className="text-primary-100 text-sm font-medium">Total à payer</span>
-          <span className="text-yellow-300 font-bold text-lg">{total.toLocaleString('fr-FR')} CFA</span>
+        <div className="bg-[#316516] rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-primary-100">Abonnement</span>
+            <span className="text-white font-semibold">{total.toLocaleString('fr-FR')} CFA</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-primary-100">Frais</span>
+            <span className="text-white font-semibold">{FEE.toLocaleString('fr-FR')} CFA</span>
+          </div>
+          <div className="border-t border-white/20 pt-2 flex items-center justify-between">
+            <span className="text-primary-100 text-sm font-medium">Total à payer</span>
+            <span className="text-yellow-300 font-bold text-lg">{totalWithFee.toLocaleString('fr-FR')} CFA</span>
+          </div>
         </div>
 
         <button onClick={() => setShowWarning(true)}
@@ -426,7 +438,7 @@ export default function CanalPlus() {
                     disabled={loadingAgents || !available}
                     className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left
                       ${available ? `${op.bg} ${op.border} hover:shadow-sm active:scale-[0.98]` : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'}`}>
-                    <span className="text-2xl">{op.logo}</span>
+                    <OperatorLogo operator={op} className="h-8" />
                     <div className="flex-1">
                       <p className={`font-bold text-base ${available ? op.text : 'text-gray-400'}`}>{op.name}</p>
                       {loadingAgents
@@ -462,7 +474,7 @@ export default function CanalPlus() {
 
       const result = await createTransaction({
         type: 'deposit',
-        amount: total,
+        amount: totalWithFee,
         platform: 'canalplus',
         accountId: formatDecoder(decoder),
         operator: operator.id,
@@ -488,7 +500,7 @@ export default function CanalPlus() {
         <div className="p-5 space-y-5 max-w-md mx-auto">
 
           <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${operator.bg} ${operator.border}`}>
-            <span className="text-xl">{operator.logo}</span>
+            <OperatorLogo operator={operator} className="h-6" />
             <div>
               <p className={`font-semibold text-sm ${operator.text}`}>{operator.name}</p>
               <p className="text-gray-500 text-xs">Opérateur sélectionné</p>
@@ -524,14 +536,17 @@ export default function CanalPlus() {
   // ── Étape 4 : Page de paiement ───────────────────────────────────────────
   if (step === S.PAYMENT) {
     const displayNumber = assignedAgentNumber;
-    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, total) || '';
+    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, totalWithFee) || '';
     const ussdTel = `tel:${ussd.replace('#', '%23')}`;
     const waMsg = encodeURIComponent(
-      `Bonjour, j'ai effectué un paiement de ${total.toLocaleString('fr-FR')} FCFA pour mon abonnement CANAL+ ${offer.name} (décodeur : ${decoder}). Référence : #${txId.slice(0, 12).toUpperCase()}`
+      `Bonjour, j'ai effectué un paiement de ${totalWithFee.toLocaleString('fr-FR')} FCFA pour mon abonnement CANAL+ ${offer.name} (décodeur : ${decoder}). Référence : #${txId.slice(0, 12).toUpperCase()}`
     );
 
     const handleConfirmPayment = async () => {
       setConfirming(true);
+      // Lance directement le composeur USSD pour que le client n'ait plus qu'à
+      // saisir son code PIN et valider le transfert sur son téléphone.
+      if (ussd) window.location.href = ussdTel;
       const result = await confirmPayment(txId);
       setConfirming(false);
       if (result.success) setStep(S.WAITING);
@@ -545,7 +560,7 @@ export default function CanalPlus() {
 
           <div className="bg-[#316516] rounded-2xl p-5 text-white">
             <p className="text-primary-200 text-xs mb-1">Montant à envoyer</p>
-            <p className="text-3xl font-bold mb-3">{total.toLocaleString('fr-FR')} FCFA</p>
+            <p className="text-3xl font-bold mb-3">{totalWithFee.toLocaleString('fr-FR')} FCFA</p>
             <div className="bg-white/10 rounded-xl px-4 py-2.5 text-sm">
               Abonnement <span className="font-bold text-yellow-300">{offer.name}</span> — {duration.label}
               {withOption && option.name !== 'Aucune option' && <> + {option.name}</>}
@@ -554,11 +569,11 @@ export default function CanalPlus() {
 
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-2">
-              Envoyez <span className="text-[#316516]">{total.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
+              Envoyez <span className="text-[#316516]">{totalWithFee.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
             </p>
             <div className={`flex items-center justify-between px-4 py-4 rounded-2xl border-2 ${operator.bg} ${operator.border}`}>
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{operator.logo}</span>
+                <OperatorLogo operator={operator} className="h-8" />
                 <div>
                   <p className={`text-xs font-semibold ${operator.text}`}>{operator.name}</p>
                   <p className="text-xl font-bold text-gray-800 tracking-wide">{displayNumber}</p>
@@ -568,25 +583,10 @@ export default function CanalPlus() {
             </div>
           </div>
 
-          {ussd && (
-            <div className="bg-gray-800 rounded-2xl p-4 space-y-3">
-              <p className="text-gray-400 text-xs font-medium">Ou tapez directement sur votre téléphone :</p>
-              <div className="flex items-center justify-between gap-3">
-                <code className="text-white font-mono text-sm font-bold tracking-wider flex-1">{ussd}</code>
-                <CopyBtn value={ussd} />
-              </div>
-              <a href={ussdTel}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
-                <Smartphone className="w-4 h-4" />
-                Ouvrir le composeur
-              </a>
-            </div>
-          )}
-
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
             <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-amber-700 text-xs leading-relaxed">
-              Envoyez <strong>exactement {total.toLocaleString('fr-FR')} FCFA</strong>.
+              Envoyez <strong>exactement {totalWithFee.toLocaleString('fr-FR')} FCFA</strong>.
               Tout autre montant retardera le traitement.
             </p>
           </div>
@@ -603,8 +603,35 @@ export default function CanalPlus() {
 
           <button onClick={handleConfirmPayment} disabled={confirming}
             className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
-            {confirming ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-5 h-5" /> J'ai envoyé le paiement</>}
+            {confirming
+              ? <RefreshCw className="w-5 h-5 animate-spin" />
+              : <><Smartphone className="w-5 h-5" /> Valider votre achat de {totalWithFee.toLocaleString('fr-FR')} FCFA</>}
           </button>
+          <p className="text-gray-400 text-xs text-center -mt-2">
+            Votre composeur téléphonique va s'ouvrir automatiquement pour saisir votre code secret.
+          </p>
+
+          {ussd && (
+            <div className="text-center">
+              <button onClick={() => setShowUssdCode(v => !v)} className="text-gray-400 text-xs underline">
+                {showUssdCode ? 'Masquer le code USSD' : "Le composeur ne s'est pas ouvert ? Afficher le code"}
+              </button>
+              {showUssdCode && (
+                <div className="bg-gray-800 rounded-2xl p-4 mt-3 space-y-3 text-left">
+                  <p className="text-gray-400 text-xs font-medium">Tapez directement sur votre téléphone :</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="text-white font-mono text-sm font-bold tracking-wider flex-1">{ussd}</code>
+                    <CopyBtn value={ussd} />
+                  </div>
+                  <a href={ussdTel}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
+                    <Smartphone className="w-4 h-4" />
+                    Ouvrir le composeur
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
 
           <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
@@ -657,7 +684,7 @@ export default function CanalPlus() {
           <div className="bg-[#316516] rounded-2xl p-5 text-white space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Montant envoyé</span>
-              <span className="font-bold">{total.toLocaleString('fr-FR')} FCFA</span>
+              <span className="font-bold">{totalWithFee.toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Abonnement</span>
@@ -707,7 +734,7 @@ export default function CanalPlus() {
         </div>
         <div className="bg-gray-100 rounded-xl px-4 py-3">
           <p className="text-gray-500 text-xs">Montant payé</p>
-          <p className="text-gray-800 font-mono font-bold mt-1">{total.toLocaleString('fr-FR')} FCFA</p>
+          <p className="text-gray-800 font-mono font-bold mt-1">{totalWithFee.toLocaleString('fr-FR')} FCFA</p>
         </div>
         <button onClick={() => navigate('/')}
           className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl transition-all">

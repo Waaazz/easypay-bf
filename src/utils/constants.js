@@ -1,6 +1,6 @@
 export const OPERATORS = [
-  { id: 'orange', name: 'Orange Money', color: '#FF6B00', bg: 'bg-orange-500', logo: '🟠' },
-  { id: 'moov', name: 'Moov Money', color: '#0066CC', bg: 'bg-blue-600', logo: '🔵' },
+  { id: 'orange', name: 'Orange Money', color: '#FF6B00', bg: 'bg-orange-500', icon: '/assets/operators/orange-money.png' },
+  { id: 'moov', name: 'Moov Money', color: '#0066CC', bg: 'bg-blue-600', icon: '/assets/operators/moov-money.png' },
   { id: 'coris', name: 'Coris Money', color: '#006400', bg: 'bg-green-800', logo: '🟢' },
   { id: 'wave', name: 'Wave', color: '#1A90FF', bg: 'bg-sky-500', logo: '🌊' },
 ];
@@ -9,7 +9,7 @@ export const AGENT_NUMBERS = [
   {
     id: 'orange',
     name: 'Orange Money',
-    logo: '🟠',
+    icon: '/assets/operators/orange-money.png',
     dot: 'bg-orange-500',
     text: 'text-orange-700',
     bg: 'bg-orange-50',
@@ -18,7 +18,7 @@ export const AGENT_NUMBERS = [
   {
     id: 'telmob',
     name: 'Moov Money',
-    logo: '🔴',
+    icon: '/assets/operators/moov-money.png',
     dot: 'bg-red-500',
     text: 'text-red-700',
     bg: 'bg-red-50',
@@ -27,7 +27,7 @@ export const AGENT_NUMBERS = [
   {
     id: 'telecel',
     name: 'Telecel Money',
-    logo: '🔵',
+    icon: '/assets/operators/telecel-money.png',
     dot: 'bg-blue-600',
     text: 'text-blue-700',
     bg: 'bg-blue-50',
