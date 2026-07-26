@@ -13,36 +13,45 @@ import OperatorLogo from '../../components/OperatorLogo';
 
 const RECENT_KEY = 'canalplus_recent_decoders';
 
+// Options communes à plusieurs offres — chaque offre référence un sous-
+// ensemble de ces options dans l'ordre où CANAL+ les propose réellement.
+const NONE = { id: 'none', name: 'Aucune option', desc: '', price: 0 };
+const NETFLIX_BASIC = { id: 'netflix-basic', name: 'NETFLIX BASIC (1E)', price: 3300,
+  desc: 'Accédez au catalogue complet de Netflix sur 1 écran à la fois.' };
+const NETFLIX_STANDARD = { id: 'netflix-standard', name: 'NETFLIX STANDARD (2E)', price: 6600,
+  desc: 'Accédez au catalogue complet de Netflix sur 2 écrans à la fois.' };
+const NETFLIX_PREMIUM = { id: 'netflix-premium', name: 'NETFLIX PREMIUM (4E)', price: 7700,
+  desc: 'Accédez au catalogue complet de Netflix sur 4 écrans à la fois, en qualité Ultra HD.' };
+const CHARME = { id: 'charme', name: 'CHARME', price: 6600,
+  desc: 'Toutes les chaînes de CANAL+ : Dorcel, Africa, Penthouse Black TV, Vixen, XXL.' };
+const ENGLISH_PLUS_EVASION = { id: 'english-plus-evasion', name: 'ENGLISH PLUS EVASION', price: 5000,
+  desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' };
+const ENGLISH_PLUS_ACCESS_PLUS = { id: 'english-plus-access-plus', name: 'ENGLISH PLUS ACCESS+', price: 2000,
+  desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' };
+const NETFLIX_STANDARD_TTC = { id: 'netflix-standard-ttc', name: 'NETFLIX STANDARD (2E) TTC', price: 6600,
+  desc: 'Accédez au catalogue complet de Netflix sur 2 écrans à la fois, inclus dans TOUT CANAL+.' };
+const NETFLIX_PREMIUM_TTC = { id: 'netflix-premium-ttc', name: 'NETFLIX PREMIUM (4E) TTC', price: 7700,
+  desc: 'Accédez au catalogue complet de Netflix sur 4 écrans à la fois, inclus dans TOUT CANAL+.' };
+
 const OFFERS = [
   { id: 'access', name: 'ACCESS', price: 5500,
-    desc: "Plus de 260 chaînes TV et radio. Bénéficiez d'une sélection de chaînes pour toute la famille : séries et divertissement, jeunesse, musique, programmes africains et informations." },
+    desc: "Plus de 260 chaînes TV et radio. Bénéficiez d'une sélection de chaînes pour toute la famille : séries et divertissement, jeunesse, musique, programmes africains et informations.",
+    options: [NONE, NETFLIX_BASIC, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
   { id: 'evasion', name: 'EVASION', price: 11000,
-    desc: 'Plus de 300 chaînes TV et radio. Découvrez une large variété de contenus pour satisfaire toute la famille : sport, divertissement, jeunesse et toujours toutes les chaînes africaines.' },
+    desc: 'Plus de 300 chaînes TV et radio. Découvrez une large variété de contenus pour satisfaire toute la famille : sport, divertissement, jeunesse et toujours toutes les chaînes africaines.',
+    options: [NONE, NETFLIX_BASIC, ENGLISH_PLUS_EVASION, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
   { id: 'access-plus', name: 'ACCESS+', price: 16500,
-    desc: 'Plus de 260 chaînes TV et radio avec encore plus de divertissement, jeunesse, musique, programmes africains et informations.' },
+    desc: 'Plus de 260 chaînes TV et radio avec encore plus de divertissement, jeunesse, musique, programmes africains et informations.',
+    options: [NONE, ENGLISH_PLUS_ACCESS_PLUS, NETFLIX_BASIC, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
   { id: 'tout-canal', name: 'TOUT CANAL+', price: 27500,
-    desc: "L'intégralité de l'offre CANAL+ : tous les bouquets, toutes les chaînes, tout le divertissement." },
+    desc: "L'intégralité de l'offre CANAL+ : tous les bouquets, toutes les chaînes, tout le divertissement.",
+    options: [NONE, NETFLIX_STANDARD_TTC, NETFLIX_PREMIUM_TTC, CHARME] },
 ];
 
 const DURATIONS = [
   { id: '30j', label: '30 jours', months: 1 },
   { id: '12m', label: '12 mois',  months: 12 },
 ];
-
-const OPTIONS = [
-  { id: 'none', name: 'Aucune option', desc: '', price: 0 },
-  { id: 'english-plus', name: 'ENGLISH PLUS ACCESS+', price: 5000,
-    desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' },
-  { id: 'charme', name: 'CHARME', price: 5000,
-    desc: 'Toutes les chaînes de CANAL+ : Dorcel, Africa, Penthouse Black TV, Vixen, XXL.' },
-  { id: 'promo', name: 'PROMO DU MOMENT', desc: '', price: 0 },
-  { id: 'netflix-basic', name: 'NETFLIX BASIC (1S)', price: 4000,
-    desc: 'Accédez au catalogue complet de Netflix avec 1 utilisateur en simultané.' },
-  { id: 'netflix-standard', name: 'NETFLIX STANDARD (2S)', price: 6000,
-    desc: 'Accédez au catalogue complet de Netflix avec 2 utilisateurs en simultanés.' },
-];
-
-const FEE = 100;
 
 const S = { DECODER: 0, FORM: 1, CHOOSE_OP: 2, CLIENT_PHONE: 3, PAYMENT: 4, WAITING: 5, SUCCESS: 6 };
 
@@ -155,7 +164,7 @@ export default function CanalPlus() {
   const [offer, setOffer] = useState(OFFERS[2]);
   const [duration, setDuration] = useState(DURATIONS[0]);
   const [withOption, setWithOption] = useState(false);
-  const [option, setOption] = useState(OPTIONS[0]);
+  const [option, setOption] = useState(OFFERS[2].options[0]);
   const [modal, setModal] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
 
@@ -195,7 +204,6 @@ export default function CanalPlus() {
   }, []);
 
   const total = offer.price * duration.months + (withOption ? (option?.price || 0) : 0);
-  const totalWithFee = total + FEE;
 
   const handleDecoderNext = () => {
     const digits = decoder.replace(/\D/g, '');
@@ -335,19 +343,9 @@ export default function CanalPlus() {
         )}
 
         {/* Total */}
-        <div className="bg-[#316516] rounded-2xl p-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-primary-100">Abonnement</span>
-            <span className="text-white font-semibold">{total.toLocaleString('fr-FR')} CFA</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-primary-100">Frais</span>
-            <span className="text-white font-semibold">{FEE.toLocaleString('fr-FR')} CFA</span>
-          </div>
-          <div className="border-t border-white/20 pt-2 flex items-center justify-between">
-            <span className="text-primary-100 text-sm font-medium">Total à payer</span>
-            <span className="text-yellow-300 font-bold text-lg">{totalWithFee.toLocaleString('fr-FR')} CFA</span>
-          </div>
+        <div className="bg-[#316516] rounded-2xl p-4 flex items-center justify-between">
+          <span className="text-primary-100 text-sm font-medium">Total à payer</span>
+          <span className="text-yellow-300 font-bold text-lg">{total.toLocaleString('fr-FR')} CFA</span>
         </div>
 
         <button onClick={() => setShowWarning(true)}
@@ -362,7 +360,15 @@ export default function CanalPlus() {
           {OFFERS.map(o => (
             <PickRow key={o.id} name={o.name} desc={o.desc} priceLabel={`${o.price.toLocaleString('fr-FR')} CFA`}
               selected={offer.id === o.id}
-              onClick={() => { setOffer(o); setModal(null); }} />
+              onClick={() => {
+                setOffer(o);
+                // Les options disponibles dépendent de l'offre — on repart sur
+                // « Aucune option » pour éviter de garder une option invalide
+                // pour la nouvelle offre sélectionnée.
+                setOption(o.options[0]);
+                setWithOption(false);
+                setModal(null);
+              }} />
           ))}
         </BottomSheet>
       )}
@@ -381,7 +387,7 @@ export default function CanalPlus() {
       {/* Modal option */}
       {modal === 'option' && (
         <BottomSheet title="Choisir une option" onClose={() => setModal(null)}>
-          {OPTIONS.map(o => (
+          {offer.options.map(o => (
             <PickRow key={o.id} name={o.name} desc={o.desc}
               priceLabel={o.price > 0 ? `+ ${o.price.toLocaleString('fr-FR')} CFA` : null}
               selected={option?.id === o.id}
@@ -474,7 +480,7 @@ export default function CanalPlus() {
 
       const result = await createTransaction({
         type: 'deposit',
-        amount: totalWithFee,
+        amount: total,
         platform: 'canalplus',
         accountId: formatDecoder(decoder),
         operator: operator.id,
@@ -536,10 +542,10 @@ export default function CanalPlus() {
   // ── Étape 4 : Page de paiement ───────────────────────────────────────────
   if (step === S.PAYMENT) {
     const displayNumber = assignedAgentNumber;
-    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, totalWithFee) || '';
+    const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, total) || '';
     const ussdTel = `tel:${ussd.replace('#', '%23')}`;
     const waMsg = encodeURIComponent(
-      `Bonjour, j'ai effectué un paiement de ${totalWithFee.toLocaleString('fr-FR')} FCFA pour mon abonnement CANAL+ ${offer.name} (décodeur : ${decoder}). Référence : #${txId.slice(0, 12).toUpperCase()}`
+      `Bonjour, j'ai effectué un paiement de ${total.toLocaleString('fr-FR')} FCFA pour mon abonnement CANAL+ ${offer.name} (décodeur : ${decoder}). Référence : #${txId.slice(0, 12).toUpperCase()}`
     );
 
     const handleConfirmPayment = async () => {
@@ -560,7 +566,7 @@ export default function CanalPlus() {
 
           <div className="bg-[#316516] rounded-2xl p-5 text-white">
             <p className="text-primary-200 text-xs mb-1">Montant à envoyer</p>
-            <p className="text-3xl font-bold mb-3">{totalWithFee.toLocaleString('fr-FR')} FCFA</p>
+            <p className="text-3xl font-bold mb-3">{total.toLocaleString('fr-FR')} FCFA</p>
             <div className="bg-white/10 rounded-xl px-4 py-2.5 text-sm">
               Abonnement <span className="font-bold text-yellow-300">{offer.name}</span> — {duration.label}
               {withOption && option.name !== 'Aucune option' && <> + {option.name}</>}
@@ -569,7 +575,7 @@ export default function CanalPlus() {
 
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-2">
-              Envoyez <span className="text-[#316516]">{totalWithFee.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
+              Envoyez <span className="text-[#316516]">{total.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
             </p>
             <div className={`flex items-center justify-between px-4 py-4 rounded-2xl border-2 ${operator.bg} ${operator.border}`}>
               <div className="flex items-center gap-3">
@@ -586,7 +592,7 @@ export default function CanalPlus() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
             <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-amber-700 text-xs leading-relaxed">
-              Envoyez <strong>exactement {totalWithFee.toLocaleString('fr-FR')} FCFA</strong>.
+              Envoyez <strong>exactement {total.toLocaleString('fr-FR')} FCFA</strong>.
               Tout autre montant retardera le traitement.
             </p>
           </div>
@@ -605,7 +611,7 @@ export default function CanalPlus() {
             className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
             {confirming
               ? <RefreshCw className="w-5 h-5 animate-spin" />
-              : <><Smartphone className="w-5 h-5" /> Valider votre achat de {totalWithFee.toLocaleString('fr-FR')} FCFA</>}
+              : <><Smartphone className="w-5 h-5" /> Valider votre achat de {total.toLocaleString('fr-FR')} FCFA</>}
           </button>
           <p className="text-gray-400 text-xs text-center -mt-2">
             Votre composeur téléphonique va s'ouvrir automatiquement pour saisir votre code secret.
@@ -684,7 +690,7 @@ export default function CanalPlus() {
           <div className="bg-[#316516] rounded-2xl p-5 text-white space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Montant envoyé</span>
-              <span className="font-bold">{totalWithFee.toLocaleString('fr-FR')} FCFA</span>
+              <span className="font-bold">{total.toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-primary-200">Abonnement</span>
@@ -700,7 +706,7 @@ export default function CanalPlus() {
             </div>
           </div>
 
-          <WaitingCountdown seconds={60} />
+          <WaitingCountdown seconds={120} />
 
           <LiveStatus
             txId={txId}
@@ -734,7 +740,7 @@ export default function CanalPlus() {
         </div>
         <div className="bg-gray-100 rounded-xl px-4 py-3">
           <p className="text-gray-500 text-xs">Montant payé</p>
-          <p className="text-gray-800 font-mono font-bold mt-1">{totalWithFee.toLocaleString('fr-FR')} FCFA</p>
+          <p className="text-gray-800 font-mono font-bold mt-1">{total.toLocaleString('fr-FR')} FCFA</p>
         </div>
         <button onClick={() => navigate('/')}
           className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl transition-all">

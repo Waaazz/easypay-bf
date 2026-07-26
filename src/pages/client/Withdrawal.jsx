@@ -440,7 +440,7 @@ export default function Withdrawal() {
           </div>
 
           {/* Décompte visuel */}
-          <WaitingCountdown seconds={60} />
+          <WaitingCountdown seconds={120} />
 
           {/* Statut temps réel */}
           <LiveStatus

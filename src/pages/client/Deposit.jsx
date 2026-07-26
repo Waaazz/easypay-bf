@@ -139,6 +139,7 @@ export default function Deposit() {
   const [error, setError]             = useState('');
   const [confirming, setConfirming]   = useState(false);
   const [cancelled, setCancelled]     = useState(false);
+  const [showUssdCode, setShowUssdCode] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [assignedAgentNumber, setAssignedAgentNumber] = useState('');
   const [selectedAgentConfig, setSelectedAgentConfig] = useState(null);
@@ -341,6 +342,9 @@ export default function Deposit() {
 
     const handleConfirmPayment = async () => {
       setConfirming(true);
+      // Lance directement le composeur USSD pour que le client n'ait plus qu'à
+      // saisir son code PIN et valider le transfert sur son téléphone.
+      if (ussd) window.location.href = ussdTel;
       const result = await confirmPayment(txId);
       setConfirming(false);
       if (result.success) setStep(S.WAITING);
@@ -383,22 +387,6 @@ export default function Deposit() {
             </div>
           </div>
 
-          {/* Code USSD */}
-          {ussd && (
-            <div className="bg-gray-800 rounded-2xl p-4 space-y-3">
-              <p className="text-gray-400 text-xs font-medium">Ou tapez directement sur votre téléphone :</p>
-              <div className="flex items-center justify-between gap-3">
-                <code className="text-white font-mono text-sm font-bold tracking-wider flex-1">{ussd}</code>
-                <CopyBtn value={ussd} />
-              </div>
-              <a href={ussdTel}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
-                <Smartphone className="w-4 h-4" />
-                Ouvrir le composeur
-              </a>
-            </div>
-          )}
-
           {/* Avertissement */}
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
             <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -422,8 +410,35 @@ export default function Deposit() {
           {/* Bouton confirmation */}
           <button onClick={handleConfirmPayment} disabled={confirming}
             className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-base">
-            {confirming ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-5 h-5" /> J'ai envoyé le paiement</>}
+            {confirming
+              ? <RefreshCw className="w-5 h-5 animate-spin" />
+              : <><Smartphone className="w-5 h-5" /> Valider votre dépôt de {amount.toLocaleString('fr-FR')} FCFA</>}
           </button>
+          <p className="text-gray-400 text-xs text-center -mt-2">
+            Votre composeur téléphonique va s'ouvrir automatiquement pour saisir votre code secret.
+          </p>
+
+          {ussd && (
+            <div className="text-center">
+              <button onClick={() => setShowUssdCode(v => !v)} className="text-gray-400 text-xs underline">
+                {showUssdCode ? 'Masquer le code USSD' : "Le composeur ne s'est pas ouvert ? Afficher le code"}
+              </button>
+              {showUssdCode && (
+                <div className="bg-gray-800 rounded-2xl p-4 mt-3 space-y-3 text-left">
+                  <p className="text-gray-400 text-xs font-medium">Tapez directement sur votre téléphone :</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="text-white font-mono text-sm font-bold tracking-wider flex-1">{ussd}</code>
+                    <CopyBtn value={ussd} />
+                  </div>
+                  <a href={ussdTel}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
+                    <Smartphone className="w-4 h-4" />
+                    Ouvrir le composeur
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* WhatsApp */}
           <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
@@ -498,7 +513,7 @@ export default function Deposit() {
           </div>
 
           {/* Décompte visuel */}
-          <WaitingCountdown seconds={60} />
+          <WaitingCountdown seconds={120} />
 
           {/* Statut temps réel */}
           <LiveStatus
