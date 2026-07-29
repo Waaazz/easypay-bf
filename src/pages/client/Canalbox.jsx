@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, ChevronRight, X, AlertTriangle, Copy, Check,
-  CheckCircle, XCircle, RefreshCw, Smartphone, Tv, User, Phone, MessageCircle,
+  CheckCircle, XCircle, RefreshCw, Smartphone, Wifi, User, Phone, MessageCircle,
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -11,52 +11,28 @@ import { AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER } from '../../utils/constants
 import WaitingCountdown from '../../components/WaitingCountdown';
 import OperatorLogo from '../../components/OperatorLogo';
 
-const RECENT_KEY = 'canalplus_recent_decoders';
-
-// Options communes à plusieurs offres — chaque offre référence un sous-
-// ensemble de ces options dans l'ordre où CANAL+ les propose réellement.
-const NONE = { id: 'none', name: 'Aucune option', desc: '', price: 0 };
-const NETFLIX_BASIC = { id: 'netflix-basic', name: 'NETFLIX BASIC (1E)', price: 3300,
-  desc: 'Accédez au catalogue complet de Netflix sur 1 écran à la fois.' };
-const NETFLIX_STANDARD = { id: 'netflix-standard', name: 'NETFLIX STANDARD (2E)', price: 6000,
-  desc: 'Accédez au catalogue complet de Netflix sur 2 écrans à la fois.' };
-const NETFLIX_PREMIUM = { id: 'netflix-premium', name: 'NETFLIX PREMIUM (4E)', price: 7700,
-  desc: 'Accédez au catalogue complet de Netflix sur 4 écrans à la fois, en qualité Ultra HD.' };
-const CHARME = { id: 'charme', name: 'CHARME', price: 6600,
-  desc: 'Toutes les chaînes de CANAL+ : Dorcel, Africa, Penthouse Black TV, Vixen, XXL.' };
-const ENGLISH_PLUS_EVASION = { id: 'english-plus-evasion', name: 'ENGLISH PLUS EVASION', price: 5000,
-  desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' };
-const ENGLISH_PLUS_ACCESS_PLUS = { id: 'english-plus-access-plus', name: 'ENGLISH PLUS ACCESS+', price: 2000,
-  desc: 'The best contents in English : UEFA Champions League, The Best Of Football, Movies And Series, Telenovelas and much more.' };
-const NETFLIX_STANDARD_TTC = { id: 'netflix-standard-ttc', name: 'NETFLIX STANDARD (2E) TTC', price: 6600,
-  desc: 'Accédez au catalogue complet de Netflix sur 2 écrans à la fois, inclus dans TOUT CANAL+.' };
-const NETFLIX_PREMIUM_TTC = { id: 'netflix-premium-ttc', name: 'NETFLIX PREMIUM (4E) TTC', price: 7700,
-  desc: 'Accédez au catalogue complet de Netflix sur 4 écrans à la fois, inclus dans TOUT CANAL+.' };
+const RECENT_KEY = 'canalbox_recent_boxes';
+const BRAND = '#0072ce';
+const BRAND_DARK = '#005ba8';
 
 const OFFERS = [
-  { id: 'access', name: 'ACCESS', price: 5500,
-    desc: "Plus de 260 chaînes TV et radio. Bénéficiez d'une sélection de chaînes pour toute la famille : séries et divertissement, jeunesse, musique, programmes africains et informations.",
-    options: [NONE, NETFLIX_BASIC, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
-  { id: 'evasion', name: 'EVASION', price: 11000,
-    desc: 'Plus de 300 chaînes TV et radio. Découvrez une large variété de contenus pour satisfaire toute la famille : sport, divertissement, jeunesse et toujours toutes les chaînes africaines.',
-    options: [NONE, NETFLIX_BASIC, ENGLISH_PLUS_EVASION, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
-  { id: 'access-plus', name: 'ACCESS+', price: 16500,
-    desc: 'Plus de 260 chaînes TV et radio avec encore plus de divertissement, jeunesse, musique, programmes africains et informations.',
-    options: [NONE, ENGLISH_PLUS_ACCESS_PLUS, NETFLIX_BASIC, NETFLIX_STANDARD, CHARME, NETFLIX_PREMIUM] },
-  { id: 'tout-canal', name: 'TOUT CANAL+', price: 27500,
-    desc: "L'intégralité de l'offre CANAL+ : tous les bouquets, toutes les chaînes, tout le divertissement.",
-    options: [NONE, NETFLIX_STANDARD_TTC, NETFLIX_PREMIUM_TTC, CHARME] },
+  { id: 'start', name: 'Start', price: 15000,
+    desc: "50Mb/s en illimité : jusqu'à 15 appareils connectés en simultané, navigation internet, chat, réseaux sociaux et appel vidéo, streaming vidéo et musical, envoi et téléchargement ultra-rapides de fichiers." },
+  { id: 'premium', name: 'Premium', price: 30000,
+    desc: 'Connexion de tous les appareils du foyer en simultané, streaming Ultra Haute Définition compatible 4K sur plusieurs écrans, envoi et téléchargement immédiats de fichiers volumineux, expérience optimale pour les jeux vidéo en ligne et la visio-conférence.' },
 ];
 
 const DURATIONS = [
-  { id: '30j', label: '30 jours', months: 1 },
-  { id: '12m', label: '12 mois',  months: 12 },
+  { id: '1m',  label: '1 mois',  months: 1 },
+  { id: '3m',  label: '3 mois',  months: 3 },
+  { id: '6m',  label: '6 mois',  months: 6 },
+  { id: '12m', label: '12 mois', months: 12 },
 ];
 
-const S = { DECODER: 0, FORM: 1, CHOOSE_OP: 2, CLIENT_PHONE: 3, PAYMENT: 4, WAITING: 5, SUCCESS: 6 };
+const S = { BOX: 0, FORM: 1, CHOOSE_OP: 2, CLIENT_PHONE: 3, PAYMENT: 4, WAITING: 5, SUCCESS: 6 };
 
-function formatDecoder(d) {
-  return d.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+function formatBox(d) {
+  return d.replace(/\s/g, '').trim();
 }
 
 // ─── En-tête commune ─────────────────────────────────────────────────────────
@@ -68,7 +44,7 @@ function Header({ title, subtitle, onBack }) {
         <ArrowLeft className="w-5 h-5 text-gray-700" />
       </button>
       <div className="flex-1 text-center">
-        <h1 className="text-base font-bold text-[#316516]">{title}</h1>
+        <h1 className="text-base font-bold" style={{ color: BRAND }}>{title}</h1>
         {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
       </div>
       <div className="w-9" />
@@ -121,6 +97,16 @@ function CopyBtn({ value }) {
   );
 }
 
+// ─── Logo CANALBOX ──────────────────────────────────────────────────────────
+function CanalboxLogo({ big }) {
+  return (
+    <div className="bg-black rounded-2xl px-6 py-4 flex items-center justify-center gap-1">
+      <span className={`text-white font-extrabold tracking-tight ${big ? 'text-3xl' : 'text-2xl'}`}>CANAL</span>
+      <span className={`bg-white text-black font-extrabold tracking-tight px-1.5 py-0.5 rounded -rotate-6 ${big ? 'text-2xl' : 'text-xl'}`}>BOX</span>
+    </div>
+  );
+}
+
 // ─── Statut temps réel ──────────────────────────────────────────────────────
 function LiveStatus({ txId, onCompleted, onCancelled }) {
   const [status, setStatus] = useState('awaiting_confirmation');
@@ -138,8 +124,8 @@ function LiveStatus({ txId, onCompleted, onCancelled }) {
 
   const cfg = {
     awaiting_confirmation: { icon: <RefreshCw className="w-4 h-4 animate-spin" />, text: "Paiement en attente de vérification par l'agent...", cls: 'bg-purple-50 border-purple-200 text-purple-700' },
-    processing:            { icon: <RefreshCw className="w-4 h-4 animate-spin" />, text: 'Paiement vérifié — recharge du décodeur en cours...', cls: 'bg-blue-50 border-blue-200 text-blue-700' },
-    completed:              { icon: <CheckCircle className="w-4 h-4" />, text: 'Terminé ! Votre abonnement CANAL+ a été rechargé.', cls: 'bg-green-50 border-green-200 text-green-700' },
+    processing:            { icon: <RefreshCw className="w-4 h-4 animate-spin" />, text: 'Paiement vérifié — renouvellement de votre box en cours...', cls: 'bg-blue-50 border-blue-200 text-blue-700' },
+    completed:              { icon: <CheckCircle className="w-4 h-4" />, text: 'Terminé ! Votre abonnement CANALBOX a été renouvelé.', cls: 'bg-green-50 border-green-200 text-green-700' },
     cancelled:              { icon: <XCircle className="w-4 h-4" />, text: "Transaction annulée par l'agent.", cls: 'bg-red-50 border-red-200 text-red-700' },
   }[status] || { icon: <RefreshCw className="w-4 h-4 animate-spin" />, text: 'En attente...', cls: 'bg-gray-50 border-gray-200 text-gray-600' };
 
@@ -151,20 +137,18 @@ function LiveStatus({ txId, onCompleted, onCancelled }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-export default function CanalPlus() {
+export default function Canalbox() {
   const navigate = useNavigate();
   const { createTransaction, confirmPayment, submitting } = useTransactionActions();
 
-  const [step, setStep] = useState(S.DECODER);
-  const [decoder, setDecoder] = useState('');
+  const [step, setStep] = useState(S.BOX);
+  const [boxNumber, setBoxNumber] = useState('');
   const [holderName, setHolderName] = useState('');
   const [recent, setRecent] = useState([]);
   const [error, setError] = useState('');
 
-  const [offer, setOffer] = useState(OFFERS[2]);
+  const [offer, setOffer] = useState(OFFERS[0]);
   const [duration, setDuration] = useState(DURATIONS[0]);
-  const [withOption, setWithOption] = useState(false);
-  const [option, setOption] = useState(OFFERS[2].options[0]);
   const [modal, setModal] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
 
@@ -177,8 +161,6 @@ export default function CanalPlus() {
   const [assignedAgentNumber, setAssignedAgentNumber] = useState('');
   const [selectedAgentConfig, setSelectedAgentConfig] = useState(null);
   const [loadingAgents, setLoadingAgents] = useState(true);
-  // Un agent est tiré au hasard par opérateur dès le chargement, puis réutilisé
-  // pour l'affichage ET l'assignation (même logique que Deposit.jsx).
   const [pickedAgents, setPickedAgents] = useState({});
 
   useEffect(() => {
@@ -203,39 +185,37 @@ export default function CanalPlus() {
     });
   }, []);
 
-  const total = offer.price * duration.months + (withOption ? (option?.price || 0) : 0);
+  const total = offer.price * duration.months;
 
-  const handleDecoderNext = () => {
-    const digits = decoder.replace(/\D/g, '');
-    if (digits.length < 8) { setError('Veuillez entrer un numéro de décodeur valide.'); return; }
+  const handleBoxNext = () => {
+    const cleaned = boxNumber.trim();
+    if (cleaned.length < 4) { setError('Veuillez entrer un numéro de box ou identifiant valide.'); return; }
     if (!holderName.trim()) { setError('Veuillez entrer le nom du titulaire.'); return; }
     setError('');
-    const entry = { decoder: decoder.trim(), name: holderName.trim() };
-    const updated = [entry, ...recent.filter(r => r.decoder !== entry.decoder)].slice(0, 3);
+    const entry = { box: cleaned, name: holderName.trim() };
+    const updated = [entry, ...recent.filter(r => r.box !== entry.box)].slice(0, 3);
     setRecent(updated);
     localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
     setStep(S.FORM);
   };
 
-  // ── Étape 0 : Numéro de décodeur ─────────────────────────────────────────
-  if (step === S.DECODER) return (
+  // ── Étape 0 : Numéro de box ──────────────────────────────────────────────
+  if (step === S.BOX) return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="CANAL+" subtitle="Gérez votre abonnement avec ApollonPay" onBack={() => navigate('/')} />
+      <Header title="CANALBOX" subtitle="Gérez votre abonnement avec ApollonPay" onBack={() => navigate('/')} />
       <div className="p-5 space-y-5 max-w-md mx-auto">
-        <div className="bg-black rounded-2xl px-6 py-4 flex items-center justify-center">
-          <span className="text-white font-extrabold text-3xl tracking-tight">CANAL<span className="align-super text-xl">+</span></span>
-        </div>
+        <div className="flex justify-center"><CanalboxLogo big /></div>
 
         <p className="text-center text-gray-500 text-sm">
-          Gérez votre abonnement directement depuis ApollonPay
+          Gérez votre abonnement CANALBOX directement depuis ApollonPay
         </p>
 
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-1">N° décodeur Canal+</p>
+          <p className="text-sm font-medium text-gray-700 mb-1">N° box ou identifiant</p>
           <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2"><Tv className="w-5 h-5 text-gray-400" /></div>
-            <input type="text" value={decoder} onChange={e => setDecoder(e.target.value)}
-              placeholder="Ex : 24110082865156"
+            <div className="absolute left-4 top-1/2 -translate-y-1/2"><Wifi className="w-5 h-5 text-gray-400" /></div>
+            <input type="text" value={boxNumber} onChange={e => setBoxNumber(e.target.value)}
+              placeholder="Ex : D8803320"
               className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all" />
           </div>
         </div>
@@ -252,14 +232,14 @@ export default function CanalPlus() {
 
         {recent.length > 0 && (
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Décodeurs récents</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Box récentes</p>
             <div className="space-y-2">
               {recent.map(r => (
-                <button key={r.decoder} onClick={() => { setDecoder(r.decoder); setHolderName(r.name); }}
+                <button key={r.box} onClick={() => { setBoxNumber(r.box); setHolderName(r.name); }}
                   className="w-full flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-50 transition text-left">
-                  <Tv className="w-5 h-5 text-gray-400" />
+                  <Wifi className="w-5 h-5 text-gray-400" />
                   <div className="flex-1">
-                    <p className="font-semibold text-gray-800 text-sm">{r.decoder}</p>
+                    <p className="font-semibold text-gray-800 text-sm">{r.box}</p>
                     <p className="text-gray-400 text-xs">{r.name}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
@@ -272,14 +252,15 @@ export default function CanalPlus() {
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-red-500 text-sm leading-relaxed">
-            En cas d'erreur sur le numéro de décodeur, <strong>aucun remboursement</strong> ne pourra être effectué. Vérifiez attentivement.
+            En cas d'erreur sur le numéro de box, <strong>aucun remboursement</strong> ne pourra être effectué. Vérifiez attentivement.
           </p>
         </div>
 
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
-        <button onClick={handleDecoderNext}
-          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+        <button onClick={handleBoxNext}
+          style={{ backgroundColor: BRAND }}
+          className="w-full hover:opacity-90 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
           Continuer <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -289,16 +270,16 @@ export default function CanalPlus() {
   // ── Étape 1 : Formulaire d'abonnement ────────────────────────────────────
   if (step === S.FORM) return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="CANAL+" subtitle="Gérez votre abonnement avec ApollonPay" onBack={() => setStep(S.DECODER)} />
+      <Header title="CANALBOX" subtitle="Gérez votre abonnement avec ApollonPay" onBack={() => setStep(S.BOX)} />
       <div className="p-5 space-y-5 max-w-md mx-auto">
 
-        {/* Décodeur */}
+        {/* Box */}
         <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
           <div>
             <p className="font-bold text-gray-800">{holderName}</p>
-            <p className="text-gray-400 text-xs">N° Décodeur : {decoder}</p>
+            <p className="text-gray-400 text-xs">N° Box : {boxNumber}</p>
           </div>
-          <button onClick={() => setStep(S.DECODER)} className="text-xs text-gray-400 underline">Modifier</button>
+          <button onClick={() => setStep(S.BOX)} className="text-xs text-gray-400 underline">Modifier</button>
         </div>
 
         {/* Offre */}
@@ -314,42 +295,25 @@ export default function CanalPlus() {
           </button>
         </div>
 
-        {/* Durée + option toggle */}
+        {/* Durée */}
         <div>
           <p className="text-sm font-medium text-gray-700 mb-1 px-1">Durée</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setModal('duration')}
-              className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between hover:bg-gray-50 transition">
-              <span className="font-bold text-gray-800">{duration.label}</span>
-              <ChevronRight className="w-4 h-4 text-gray-300" />
-            </button>
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
-              <span className="font-medium text-gray-700 text-sm">Avec option</span>
-              <button onClick={() => setWithOption(v => !v)}
-                className={`w-11 h-6 rounded-full transition-all relative ${withOption ? 'bg-green-500' : 'bg-gray-300'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${withOption ? 'left-5' : 'left-0.5'}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Option */}
-        {withOption && (
-          <button onClick={() => setModal('option')}
+          <button onClick={() => setModal('duration')}
             className="w-full bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between hover:bg-gray-50 transition">
-            <span className="font-bold text-gray-800">{option?.name || 'Choisir une option'}</span>
+            <span className="font-bold text-gray-800">{duration.label}</span>
             <ChevronRight className="w-4 h-4 text-gray-300" />
           </button>
-        )}
+        </div>
 
         {/* Total */}
-        <div className="bg-[#316516] rounded-2xl p-4 flex items-center justify-between">
-          <span className="text-primary-100 text-sm font-medium">Total à payer</span>
+        <div style={{ backgroundColor: BRAND }} className="rounded-2xl p-4 flex items-center justify-between">
+          <span className="text-white/80 text-sm font-medium">Total à payer</span>
           <span className="text-yellow-300 font-bold text-lg">{total.toLocaleString('fr-FR')} CFA</span>
         </div>
 
         <button onClick={() => setShowWarning(true)}
-          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
+          style={{ backgroundColor: BRAND }}
+          className="w-full hover:opacity-90 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
           Continuer <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -360,38 +324,18 @@ export default function CanalPlus() {
           {OFFERS.map(o => (
             <PickRow key={o.id} name={o.name} desc={o.desc} priceLabel={`${o.price.toLocaleString('fr-FR')} CFA`}
               selected={offer.id === o.id}
-              onClick={() => {
-                setOffer(o);
-                // Les options disponibles dépendent de l'offre — on repart sur
-                // « Aucune option » pour éviter de garder une option invalide
-                // pour la nouvelle offre sélectionnée.
-                setOption(o.options[0]);
-                setWithOption(false);
-                setModal(null);
-              }} />
+              onClick={() => { setOffer(o); setModal(null); }} />
           ))}
         </BottomSheet>
       )}
 
       {/* Modal durée */}
       {modal === 'duration' && (
-        <BottomSheet title="Choisir la durée" onClose={() => setModal(null)}>
+        <BottomSheet title="Choisir la duree" onClose={() => setModal(null)}>
           {DURATIONS.map(d => (
             <PickRow key={d.id} name={d.label}
               selected={duration.id === d.id}
               onClick={() => { setDuration(d); setModal(null); }} />
-          ))}
-        </BottomSheet>
-      )}
-
-      {/* Modal option */}
-      {modal === 'option' && (
-        <BottomSheet title="Choisir une option" onClose={() => setModal(null)}>
-          {offer.options.map(o => (
-            <PickRow key={o.id} name={o.name} desc={o.desc}
-              priceLabel={o.price > 0 ? `+ ${o.price.toLocaleString('fr-FR')} CFA` : null}
-              selected={option?.id === o.id}
-              onClick={() => { setOption(o); setModal(null); }} />
           ))}
         </BottomSheet>
       )}
@@ -405,13 +349,13 @@ export default function CanalPlus() {
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
             <p className="text-red-500 text-sm leading-relaxed">
-              Important : votre achat pour le décodeur <strong>{decoder}</strong> - <strong>{holderName}</strong>{' '}
-              ne peut pas être remboursé si vous vous trompez de numéro de décodeur.
+              Important : votre achat pour la box <strong>{boxNumber}</strong> - <strong>{holderName}</strong>{' '}
+              ne peut pas être remboursé si vous vous trompez de numéro de box.
             </p>
             <button onClick={() => { setShowWarning(false); setStep(S.CHOOSE_OP); }} className="w-full text-green-600 font-semibold py-2">
               Poursuivre l'abonnement
             </button>
-            <button onClick={() => { setShowWarning(false); setStep(S.DECODER); }} className="w-full text-gray-500 font-medium py-2">
+            <button onClick={() => { setShowWarning(false); setStep(S.BOX); }} className="w-full text-gray-500 font-medium py-2">
               Modifier les informations
             </button>
           </div>
@@ -481,8 +425,8 @@ export default function CanalPlus() {
       const result = await createTransaction({
         type: 'deposit',
         amount: total,
-        platform: 'canalplus',
-        accountId: formatDecoder(decoder),
+        platform: 'canalbox',
+        accountId: formatBox(boxNumber),
         operator: operator.id,
         clientPhone: phone,
         assignedAgentId: selectedAgentConfig?.agentId || null,
@@ -490,7 +434,6 @@ export default function CanalPlus() {
         holderName,
         offerName: offer.name,
         durationLabel: duration.label,
-        optionName: withOption ? option.name : 'Aucune option',
       });
       if (result.success) {
         setAssignedAgentNumber(agentNumber);
@@ -531,7 +474,8 @@ export default function CanalPlus() {
           {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
           <button onClick={handleSubmit} disabled={submitting}
-            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+            style={{ backgroundColor: BRAND }}
+            className="w-full hover:opacity-90 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
             {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Confirmer <ArrowRight className="w-5 h-5" /></>}
           </button>
         </div>
@@ -545,7 +489,7 @@ export default function CanalPlus() {
     const ussd = USSD_CODE[operator.id]?.(assignedAgentNumber, total) || '';
     const ussdTel = `tel:${ussd.replace('#', '%23')}`;
     const waMsg = encodeURIComponent(
-      `Bonjour, j'ai effectué un paiement de ${total.toLocaleString('fr-FR')} FCFA pour mon abonnement CANAL+ ${offer.name} (décodeur : ${decoder}). Référence : #${txId.slice(0, 12).toUpperCase()}`
+      `Bonjour, j'ai effectué un paiement de ${total.toLocaleString('fr-FR')} FCFA pour mon abonnement CANALBOX ${offer.name} (box : ${boxNumber}). Référence : #${txId.slice(0, 12).toUpperCase()}`
     );
 
     const handleConfirmPayment = async () => {
@@ -564,18 +508,17 @@ export default function CanalPlus() {
         <Header title="Confirmation du paiement" onBack={() => navigate('/')} />
         <div className="p-5 space-y-4 max-w-md mx-auto">
 
-          <div className="bg-[#316516] rounded-2xl p-5 text-white">
-            <p className="text-primary-200 text-xs mb-1">Montant à envoyer</p>
+          <div style={{ backgroundColor: BRAND }} className="rounded-2xl p-5 text-white">
+            <p className="text-white/70 text-xs mb-1">Montant à envoyer</p>
             <p className="text-3xl font-bold mb-3">{total.toLocaleString('fr-FR')} FCFA</p>
             <div className="bg-white/10 rounded-xl px-4 py-2.5 text-sm">
               Abonnement <span className="font-bold text-yellow-300">{offer.name}</span> — {duration.label}
-              {withOption && option.name !== 'Aucune option' && <> + {option.name}</>}
             </div>
           </div>
 
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-2">
-              Envoyez <span className="text-[#316516]">{total.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
+              Envoyez <span style={{ color: BRAND }}>{total.toLocaleString('fr-FR')} FCFA</span> à ce numéro :
             </p>
             <div className={`flex items-center justify-between px-4 py-4 rounded-2xl border-2 ${operator.bg} ${operator.border}`}>
               <div className="flex items-center gap-3">
@@ -630,7 +573,8 @@ export default function CanalPlus() {
                     <CopyBtn value={ussd} />
                   </div>
                   <a href={ussdTel}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#316516] text-white font-semibold text-sm hover:bg-[#2a5314] transition-all">
+                    style={{ backgroundColor: BRAND }}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-all">
                     <Smartphone className="w-4 h-4" />
                     Ouvrir le composeur
                   </a>
@@ -687,21 +631,21 @@ export default function CanalPlus() {
             </div>
           </div>
 
-          <div className="bg-[#316516] rounded-2xl p-5 text-white space-y-2">
+          <div style={{ backgroundColor: BRAND }} className="rounded-2xl p-5 text-white space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-primary-200">Montant envoyé</span>
+              <span className="text-white/70">Montant envoyé</span>
               <span className="font-bold">{total.toLocaleString('fr-FR')} FCFA</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-primary-200">Abonnement</span>
+              <span className="text-white/70">Abonnement</span>
               <span className="font-bold">{offer.name} — {duration.label}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-primary-200">Décodeur</span>
-              <span className="font-bold">{decoder}</span>
+              <span className="text-white/70">Box</span>
+              <span className="font-bold">{boxNumber}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-primary-200">Référence</span>
+              <span className="text-white/70">Référence</span>
               <span className="font-mono font-bold">#{txId.slice(0, 12).toUpperCase()}</span>
             </div>
           </div>
@@ -732,10 +676,10 @@ export default function CanalPlus() {
           <CheckCircle className="w-10 h-10 text-green-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Abonnement rechargé !</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Abonnement renouvelé !</h2>
           <p className="text-gray-500 text-sm">
-            Votre offre <span className="font-semibold text-gray-800">{offer.name}</span> a été activée sur le décodeur{' '}
-            <span className="font-semibold text-gray-800">{decoder}</span>.
+            Votre offre <span className="font-semibold text-gray-800">{offer.name}</span> a été activée sur la box{' '}
+            <span className="font-semibold text-gray-800">{boxNumber}</span>.
           </p>
         </div>
         <div className="bg-gray-100 rounded-xl px-4 py-3">
@@ -743,7 +687,8 @@ export default function CanalPlus() {
           <p className="text-gray-800 font-mono font-bold mt-1">{total.toLocaleString('fr-FR')} FCFA</p>
         </div>
         <button onClick={() => navigate('/')}
-          className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl transition-all">
+          style={{ backgroundColor: BRAND }}
+          className="w-full hover:opacity-90 text-white font-semibold py-4 rounded-2xl transition-all">
           Retour à l'accueil
         </button>
       </div>

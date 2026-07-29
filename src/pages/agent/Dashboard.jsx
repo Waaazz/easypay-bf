@@ -159,6 +159,25 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                 </div>
               </>
             )}
+            {transaction.platform === 'canalbox' && (
+              <>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+                  <p className="text-gray-500 text-xs mb-1">Titulaire box</p>
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-white text-sm font-medium truncate">
+                      {transaction.holderName || '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+                  <p className="text-gray-500 text-xs mb-1">Offre à renouveler</p>
+                  <span className="text-white text-sm font-bold">
+                    {transaction.offerName} — {transaction.durationLabel}
+                  </span>
+                </div>
+              </>
+            )}
             {!isDeposit && (
               <>
                 <div className="bg-gray-800 rounded-xl px-3 py-2.5">

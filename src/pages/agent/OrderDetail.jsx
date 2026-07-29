@@ -158,6 +158,10 @@ export default function OrderDetail() {
                 { icon: CreditCard, label: 'Offre',      value: `${transaction.offerName || '—'} — ${transaction.durationLabel || '—'}` },
                 { icon: CreditCard, label: 'Option',     value: transaction.optionName || 'Aucune option' },
               ] : []),
+              ...(transaction.platform === 'canalbox' ? [
+                { icon: User,       label: 'Titulaire box', value: transaction.holderName || '—' },
+                { icon: CreditCard, label: 'Offre',    value: `${transaction.offerName || '—'} — ${transaction.durationLabel || '—'}` },
+              ] : []),
               { icon: User,     label: 'Client',     value: transaction.clientName || 'Inconnu' },
               { icon: Calendar, label: 'Date',        value: formatDate(transaction.createdAt) },
             ].map(({ icon: Icon, label, value }) => (

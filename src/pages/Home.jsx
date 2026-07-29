@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Minus, Delete, History, Clock } from 'lucide-react';
+import { Plus, Minus, Delete, History } from 'lucide-react';
 import { WHATSAPP_NUMBER } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 
@@ -41,9 +41,12 @@ export default function Home() {
   };
 
   const handleAction = (type) => {
-    if (isCanalbox) return;
     if (isCanalPlus && type === 'deposit') {
       navigate('/canal-plus');
+      return;
+    }
+    if (isCanalbox && type === 'deposit') {
+      navigate('/canalbox');
       return;
     }
     const parsed = parseInt(amount) || 0;
@@ -121,15 +124,13 @@ export default function Home() {
         <div className="bg-white rounded-3xl shadow-xl shadow-black/10 p-5">
           {isCanalbox ? (
             <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
-                <Clock className="w-8 h-8 text-[#0072ce]" />
+              <div className="bg-black rounded-2xl px-6 py-3 flex items-center gap-1">
+                <span className="text-white font-extrabold text-2xl tracking-tight">CANAL</span>
+                <span className="bg-white text-black font-extrabold text-lg tracking-tight px-1.5 py-0.5 rounded -rotate-6">BOX</span>
               </div>
-              <div>
-                <p className="font-bold text-gray-800 mb-1">CANALBOX — Bientôt disponible</p>
-                <p className="text-gray-500 text-sm max-w-xs">
-                  La recharge d'abonnement CANALBOX sera bientôt disponible directement depuis ApollonPay. Revenez très vite !
-                </p>
-              </div>
+              <p className="text-gray-500 text-sm max-w-xs">
+                Gérez votre abonnement CANALBOX directement depuis ApollonPay : choisissez votre offre, la durée et payez en un instant.
+              </p>
             </div>
           ) : isCanalPlus ? (
             <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
@@ -197,15 +198,10 @@ export default function Home() {
       <div className="flex gap-0 px-0 pb-0 sticky bottom-0">
         <button
           onClick={() => handleAction('deposit')}
-          disabled={isCanalbox}
-          className={`flex-1 font-semibold py-5 flex items-center justify-center gap-2 text-base transition-all ${
-            isCanalbox
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gold-600 hover:bg-gold-700 active:bg-gold-800 text-white'
-          }`}
+          className="flex-1 bg-gold-600 hover:bg-gold-700 active:bg-gold-800 text-white font-semibold py-5 flex items-center justify-center gap-2 text-base transition-all"
         >
-          {isCanalbox ? <Clock className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-          {isCanalbox ? 'Bientôt disponible' : isSubscription ? `Payer ${platformLabel}` : `Dépôt ${platformLabel}`}
+          <Plus className="w-5 h-5" />
+          {isSubscription ? `Payer ${platformLabel}` : `Dépôt ${platformLabel}`}
         </button>
         {!isSubscription && (
           <button
