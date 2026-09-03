@@ -46,6 +46,13 @@ export const USSD_CODE = {
 // affiche un choix si plusieurs, sinon un lien direct suffit.
 export const WHATSAPP_NUMBERS = ['22644002222'];
 
+// URL publique de l'app — utilisée pour le QR code de parrainage et le partage.
+export const APP_URL = 'https://project-wexlx.vercel.app';
+
+// Page Facebook officielle — laisser vide pour masquer le bouton "Nous
+// suivre sur Facebook" tant qu'elle n'est pas configurée.
+export const FACEBOOK_URL = 'https://web.facebook.com/profile.php?id=61576471814091&locale=fr_FR';
+
 export const DEPOSIT_SESSION_MINUTES = 15;
 
 export const MIN_AMOUNT = 500;

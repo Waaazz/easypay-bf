@@ -67,21 +67,14 @@ export default function App() {
         <Route path="/superagent/login" element={<SuperAgentLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* Client routes */}
+        {/* Client routes — accessibles en invité (session anonyme), le
+            contenu s'adapte lui-même selon que le visiteur est inscrit ou non */}
         <Route path="/deposit"    element={<Deposit />} />
         <Route path="/withdrawal" element={<Withdrawal />} />
         <Route path="/canal-plus" element={<CanalPlus />} />
         <Route path="/canalbox" element={<Canalbox />} />
-        <Route path="/dashboard" element={
-          <ProtectedRoute allowedRoles={['client']}>
-            <ClientDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/history" element={
-          <ProtectedRoute allowedRoles={['client']}>
-            <History />
-          </ProtectedRoute>
-        } />
+        <Route path="/dashboard" element={<ClientDashboard />} />
+        <Route path="/history"   element={<History />} />
 
         {/* Agent routes — réservé aux agents */}
         <Route path="/agent" element={

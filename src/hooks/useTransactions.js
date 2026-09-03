@@ -349,6 +349,56 @@ export function useAgentTransactions() {
 }
 
 /**
+ * Annuaire agents/superviseurs pour l'admin — noms + rattachement
+ * superAgentId de chaque agent, utilisé par resolveTransactionStaff pour
+ * afficher qui traite chaque transaction sans avoir à dénormaliser ces
+ * infos sur chaque document transaction.
+ */
+export function useStaffDirectory() {
+  const [agentsById, setAgentsById] = useState({});
+  const [superAgentsById, setSuperAgentsById] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const qAgents = query(collection(db, 'users'), where('role', '==', 'agent'));
+    const unsubAgents = onSnapshot(qAgents, (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => {
+        map[d.id] = { name: d.data().name || 'Agent', superAgentId: d.data().superAgentId || null };
+      });
+      setAgentsById(map);
+      setLoading(false);
+    }, () => setLoading(false));
+
+    const qSuperAgents = query(collection(db, 'users'), where('role', '==', 'superagent'));
+    const unsubSuperAgents = onSnapshot(qSuperAgents, (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => { map[d.id] = d.data().name || 'Superviseur'; });
+      setSuperAgentsById(map);
+    });
+
+    return () => { unsubAgents(); unsubSuperAgents(); };
+  }, []);
+
+  return { agentsById, superAgentsById, loading };
+}
+
+/**
+ * Résout, pour une transaction, le nom de l'agent qui la traite (ou l'a
+ * traitée/annulée) et le nom du superviseur dont cet agent dépend — à partir
+ * de l'annuaire renvoyé par useStaffDirectory(). `claimed` distingue un agent
+ * qui a réellement réclamé la commande (agentId) d'un agent seulement
+ * pré-assigné (assignedAgentId, dépôt pas encore traité).
+ */
+export function resolveTransactionStaff(tx, agentsById, superAgentsById) {
+  const agentId = tx.agentId || tx.assignedAgentId || null;
+  const agentInfo = agentId ? agentsById[agentId] : null;
+  const agentName = tx.agentName || agentInfo?.name || null;
+  const superviseurName = agentInfo?.superAgentId ? superAgentsById[agentInfo.superAgentId] : null;
+  return { agentId, agentName, superviseurName, claimed: !!tx.agentId };
+}
+
+/**
  * Hook for admin - all transactions
  */
 export function useAdminTransactions(statusFilter = null) {

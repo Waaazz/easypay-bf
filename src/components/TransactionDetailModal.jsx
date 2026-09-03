@@ -1,15 +1,21 @@
 import React from 'react';
-import { X, CreditCard, User, Calendar, Phone } from 'lucide-react';
+import { X, CreditCard, User, UserCog, Calendar, Phone, Timer } from 'lucide-react';
 import StatusBadge from './StatusBadge';
-import { formatCFA, formatDate, formatTxId } from '../utils/formatters';
-import { OPERATORS } from '../utils/constants';
+import { formatCFA, formatDate, formatTxId, computeWaitMs } from '../utils/formatters';
+import { formatDuration } from '../utils/availability';
+import { AGENT_NUMBERS } from '../utils/constants';
 import OperatorLogo from './OperatorLogo';
 
-export default function TransactionDetailModal({ transaction, onClose }) {
+// `agentName`/`superviseurName`/`agentClaimed` sont optionnels — fournis par
+// l'admin (via resolveTransactionStaff) pour afficher qui traite la
+// transaction et de quel superviseur cet agent dépend. Absents côté client,
+// qui n'a pas à voir cette information interne. `showWaitTime` affiche le
+// temps d'attente du client (admin/superviseur uniquement).
+export default function TransactionDetailModal({ transaction, onClose, agentName, superviseurName, agentClaimed, showWaitTime }) {
   if (!transaction) return null;
 
   const isDeposit = transaction.type === 'deposit';
-  const operator = OPERATORS.find((op) => op.id === transaction.operator);
+  const operator = AGENT_NUMBERS.find((op) => op.id === transaction.operator);
 
   const rows = [
     { icon: CreditCard, label: 'Type', value: isDeposit ? 'Dépôt' : 'Retrait' },
@@ -21,7 +27,11 @@ export default function TransactionDetailModal({ transaction, onClose }) {
       </span>
     ) },
     ...(transaction.accountId ? [{ icon: User, label: 'ID compte', value: transaction.accountId }] : []),
+    ...(agentName && transaction.clientName ? [{ icon: User, label: 'Client', value: transaction.clientName }] : []),
     ...(transaction.phone ? [{ icon: Phone, label: 'Téléphone', value: transaction.phone }] : []),
+    ...(agentName ? [{ icon: User, label: agentClaimed ? 'Agent' : 'Agent assigné', value: agentName }] : []),
+    ...(superviseurName ? [{ icon: UserCog, label: 'Superviseur', value: superviseurName }] : []),
+    ...(showWaitTime ? [{ icon: Timer, label: "Temps d'attente", value: formatDuration(computeWaitMs(transaction)) }] : []),
     { icon: Calendar, label: 'Date', value: formatDate(transaction.createdAt) },
   ];
 
@@ -54,7 +64,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
           {rows.map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3">
               <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="text-gray-500 dark:text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
+              <span className="text-gray-600 dark:text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
               <span className="text-gray-900 dark:text-white font-medium text-sm truncate">{value}</span>
             </div>
           ))}

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import SessionLogsPanel from '../../components/SessionLogsPanel';
+import UsernameAssign from '../../components/UsernameAssign';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDate, formatCFA, formatRelativeTime } from '../../utils/formatters';
@@ -248,6 +249,8 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
             )}
           </div>
 
+          <UsernameAssign uid={agent.uid} role="agent" username={agent.username} />
+
           <SessionLogsPanel uid={agent.uid} name={agent.name} />
 
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -390,6 +393,7 @@ function EditOperatorsModal({ agent, onClose }) {
 function CreateAgentModal({ onClose }) {
   const { createAgentAccount } = useAuth();
   const [name,      setName]      = useState('');
+  const [username,  setUsername]  = useState('');
   const [phone,     setPhone]     = useState('');
   const [password,  setPassword]  = useState('');
   const [showPwd,   setShowPwd]   = useState(false);
@@ -404,6 +408,7 @@ function CreateAgentModal({ onClose }) {
     if (!name.trim() || !phone.trim() || !password) return;
     if (phone.replace(/\D/g, '').length < 8) { setError('Numéro de téléphone invalide.'); return; }
     if (password.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
+    if (username.trim() && username.trim().length < 3) { setError("Nom d'utilisateur trop court (3 caractères minimum)."); return; }
     if (!opOrange.trim() && !opTelmob.trim() && !opTelecel.trim()) {
       setError('Veuillez saisir au moins un numéro Mobile Money.');
       return;
@@ -416,12 +421,12 @@ function CreateAgentModal({ onClose }) {
     if (opTelmob.trim())  operators.telmob  = opTelmob.replace(/\s/g, '');
     if (opTelecel.trim()) operators.telecel = opTelecel.replace(/\s/g, '');
 
-    const result = await createAgentAccount(name.trim(), phone, password, operators);
+    const result = await createAgentAccount(name.trim(), phone, password, operators, username.trim());
     setLoading(false);
 
     if (result.success) {
       setSuccess(`Compte créé pour ${name.trim()}`);
-      setName(''); setPhone(''); setPassword('');
+      setName(''); setUsername(''); setPhone(''); setPassword('');
       setOpOrange(''); setOpTelmob(''); setOpTelecel('');
     } else {
       setError(result.error);
@@ -433,7 +438,7 @@ function CreateAgentModal({ onClose }) {
       <div className="card w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <h3 className="section-title mb-1">Créer un compte agent</h3>
         <p className="text-gray-500 text-xs mb-5">
-          L'agent se connecte sur <span className="text-gray-300">/agent/login</span>.
+          L'agent se connecte sur <span className="text-gray-300">/agent/login</span> par numéro (ou par nom d'utilisateur si renseigné ci-dessous).
         </p>
 
         <div className="space-y-4">
@@ -453,6 +458,12 @@ function CreateAgentModal({ onClose }) {
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                 placeholder="70 00 00 00" className="input-field pl-24" maxLength={12} />
             </div>
+          </div>
+
+          <div>
+            <label className="label">Nom d'utilisateur (optionnel)</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+              placeholder="ex : moussa.t" className="input-field" autoCapitalize="none" autoCorrect="off" />
           </div>
 
           <div>

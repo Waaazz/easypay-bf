@@ -237,8 +237,21 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginAgent = async (phone, password) => {
-    const email = phoneToEmail(phone, 'agent');
+  // Un agent se connecte historiquement par numéro ; les agents créés plus
+  // récemment ont en plus un nom d'utilisateur (voir createAgentAccount /
+  // UsernameAssign pour les comptes migrés). On détecte l'identifiant saisi
+  // pour router vers le bon flux SANS jamais casser le login par numéro des
+  // agents existants — un identifiant majoritairement numérique (8+ chiffres)
+  // est traité comme un numéro, sinon comme un nom d'utilisateur.
+  const loginAgent = async (identifier, password) => {
+    const digits = identifier.replace(/\D/g, '');
+    const looksLikePhone = digits.length >= 8;
+
+    if (!looksLikePhone) {
+      return loginWithUsername(identifier, password);
+    }
+
+    const email = phoneToEmail(identifier, 'agent');
     signingIn.current = true;
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
@@ -359,7 +372,10 @@ export function AuthProvider({ children }) {
 
   // ── Création compte agent par l'admin ────────────────────────────────────
   // operators = { orange: '07XXXXXX', telmob: '60XXXXXX', telecel: '55XXXXXX' }
-  const createAgentAccount = async (name, phone, password, operators = {}) => {
+  // username (optionnel) : l'agent pourra alors se connecter par numéro OU
+  // par nom d'utilisateur (voir loginAgent) — le compte Firebase Auth reste
+  // créé par numéro comme avant, le username n'est qu'un pointeur en plus.
+  const createAgentAccount = async (name, phone, password, operators = {}, username = '') => {
     const email = phoneToEmail(phone, 'agent');
     const digits = phone.replace(/\D/g, '');
     const normalized = digits.startsWith('226') ? digits : `226${digits}`;
@@ -369,6 +385,15 @@ export function AuthProvider({ children }) {
     const cleanOperators = Object.fromEntries(
       Object.entries(operators).filter(([, v]) => v && v.trim())
     );
+
+    let normalizedUsername = null;
+    if (username && username.trim()) {
+      try {
+        normalizedUsername = await reserveUsername(username, 'agent');
+      } catch (error) {
+        return { success: false, error: error.message || "Nom d'utilisateur invalide." };
+      }
+    }
 
     try {
       const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
@@ -382,9 +407,14 @@ export function AuthProvider({ children }) {
         role: 'agent',
         active: true,
         operators: cleanOperators,
+        username: normalizedUsername || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      if (normalizedUsername) {
+        await setDoc(doc(db, 'usernames', normalizedUsername), { email, role: 'agent' });
+      }
 
       await signOut(secondaryAuth);
       return { success: true };

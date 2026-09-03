@@ -1,40 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Zap, Smartphone } from 'lucide-react';
+import { isInstallAvailable, isStandalone, onInstallAvailabilityChange, promptInstall } from '../utils/pwaInstall';
 
 export default function InstallPrompt() {
-  const [prompt, setPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     // Ne pas afficher si déjà installée (mode standalone)
-    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    if (isStandalone()) return;
     // Ne pas afficher si déjà refusé récemment
     const dismissed = localStorage.getItem('pwa-dismissed');
     if (dismissed && Date.now() - parseInt(dismissed) < 7 * 24 * 60 * 60 * 1000) return;
 
-    const handler = (e) => {
-      e.preventDefault();
-      setPrompt(e);
-      // Délai pour ne pas afficher au chargement immédiat
-      setTimeout(() => setVisible(true), 3000);
-    };
+    const reveal = () => setTimeout(() => setVisible(true), 3000);
+    if (isInstallAvailable()) reveal();
 
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return onInstallAvailabilityChange((available) => {
+      if (available) reveal();
+      else setVisible(false);
+    });
   }, []);
 
   const handleInstall = async () => {
-    if (!prompt) return;
     setInstalling(true);
-    prompt.prompt();
-    const { outcome } = await prompt.userChoice;
+    const { outcome } = await promptInstall();
     if (outcome === 'accepted') {
       setVisible(false);
     } else {
       setInstalling(false);
     }
-    setPrompt(null);
   };
 
   const handleDismiss = () => {
@@ -42,7 +37,7 @@ export default function InstallPrompt() {
     localStorage.setItem('pwa-dismissed', Date.now().toString());
   };
 
-  if (!visible || !prompt) return null;
+  if (!visible) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 animate-slide-up">

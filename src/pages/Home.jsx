@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Minus, Delete, History } from 'lucide-react';
 import WhatsAppMenu from '../components/WhatsAppMenu';
+import ClientBottomNav from '../components/ClientBottomNav';
 import { useAuth } from '../hooks/useAuth';
 
 const PLATFORMS = [
@@ -198,7 +199,7 @@ export default function Home() {
       </div>
 
       {/* Bottom action buttons */}
-      <div className="flex gap-0 px-0 pb-0 sticky bottom-0">
+      <div className="flex gap-0 px-0 pb-0">
         <button
           onClick={() => handleAction('deposit')}
           className="flex-1 bg-gold-600 hover:bg-gold-700 active:bg-gold-800 text-white font-semibold py-5 flex items-center justify-center gap-2 text-base transition-all"
@@ -216,6 +217,8 @@ export default function Home() {
           </button>
         )}
       </div>
+
+      <ClientBottomNav active="transaction" />
     </div>
   );
 }
