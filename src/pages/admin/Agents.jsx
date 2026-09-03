@@ -15,6 +15,7 @@ import {
   Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
+import SessionLogsPanel from '../../components/SessionLogsPanel';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDate, formatCFA, formatRelativeTime } from '../../utils/formatters';
@@ -82,14 +83,21 @@ function StatusDot({ color, label }) {
 // l'admin sous l'information. Les alertes ne s'affichent que si elles sont
 // réellement pertinentes (charge élevée, taux d'annulation anormal, agent
 // indisponible depuis longtemps) plutôt que d'empiler des badges en continu.
-function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank }) {
+function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank, superAgents, onAssignSuperAgent }) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [assigningSuperAgent, setAssigningSuperAgent] = useState(false);
 
   const handleToggle = async () => {
     setLoading(true);
     await onToggle(agent.uid, !agent.active);
     setLoading(false);
+  };
+
+  const handleSuperAgentChange = async (e) => {
+    setAssigningSuperAgent(true);
+    await onAssignSuperAgent(agent.uid, e.target.value || null);
+    setAssigningSuperAgent(false);
   };
 
   const operatorEntries = Object.entries(agent.operators || {}).filter(([, v]) => v);
@@ -214,6 +222,33 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
               Dernière commande traitée {formatRelativeTime(stats.lastActivityAt).toLowerCase()}
             </p>
           )}
+
+          {/* Assignation à un SuperAgent — supervision d'équipe, indépendante
+              de l'activation/désactivation de l'agent lui-même. */}
+          <div>
+            <label className="text-gray-500 text-xs mb-1 block">Superviseur</label>
+            <div className="relative">
+              <select
+                value={agent.superAgentId || ''}
+                onChange={handleSuperAgentChange}
+                disabled={assigningSuperAgent || superAgents.length === 0}
+                className="input-field text-sm py-2 disabled:opacity-50"
+              >
+                <option value="">Aucun</option>
+                {superAgents.map((sa) => (
+                  <option key={sa.uid} value={sa.uid}>{sa.name || 'Superviseur'}</option>
+                ))}
+              </select>
+              {assigningSuperAgent && (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
+            {superAgents.length === 0 && (
+              <p className="text-gray-600 text-xs mt-1">Aucun Superviseur créé pour le moment.</p>
+            )}
+          </div>
+
+          <SessionLogsPanel uid={agent.uid} name={agent.name} />
 
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-4">
@@ -488,6 +523,7 @@ export default function AdminAgents() {
   const [agentStats,    setAgentStats]    = useState({});
   const [activeLoad,    setActiveLoad]    = useState({});
   const [showArchived,  setShowArchived]  = useState(false);
+  const [superAgents,   setSuperAgents]   = useState([]);
 
   useEffect(() => {
     const q = query(collection(db, 'users'), where('role', '==', 'agent'));
@@ -496,6 +532,21 @@ export default function AdminAgents() {
       setLoading(false);
     });
   }, []);
+
+  // Liste des SuperAgents actifs, pour le menu d'assignation par agent.
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('role', '==', 'superagent'), where('active', '==', true));
+    return onSnapshot(q, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ uid: d.id, ...d.data() }))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setSuperAgents(list);
+    });
+  }, []);
+
+  const assignSuperAgent = async (agentUid, superAgentId) => {
+    await updateDoc(doc(db, 'users', agentUid), { superAgentId, updatedAt: serverTimestamp() });
+  };
 
   // Stats de performance par agent : transactions terminées (dépôts/retraits,
   // montant, répartition par opérateur, dernière activité) et annulées (taux
@@ -675,7 +726,9 @@ export default function AdminAgents() {
                 onArchive={setArchivingAgent}
                 stats={agentStats[agent.uid]}
                 activeLoad={activeLoad[agent.uid] || 0}
-                rank={index + 1} />
+                rank={index + 1}
+                superAgents={superAgents}
+                onAssignSuperAgent={assignSuperAgent} />
             ))}
           </div>
         )}

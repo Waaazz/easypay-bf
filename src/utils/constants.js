@@ -42,8 +42,9 @@ export const USSD_CODE = {
   telecel: (agentRaw, amount) => `*135*1*${agentRaw}*${amount}#`,
 };
 
-// Numéro WhatsApp support
-export const WHATSAPP_NUMBER = '22644002222';
+// Numéros WhatsApp support — un ou plusieurs assistants ; WhatsAppMenu
+// affiche un choix si plusieurs, sinon un lien direct suffit.
+export const WHATSAPP_NUMBERS = ['22644002222'];
 
 export const DEPOSIT_SESSION_MINUTES = 15;
 
@@ -57,36 +58,39 @@ export const FEES = {
 
 export const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 25000, 50000];
 
+// Le texte -400 (pensé pour fond sombre) est trop clair sur fond blanc en
+// mode clair — on ajoute donc une teinte -700 par défaut, remplacée par la
+// -400 d'origine en mode sombre via le variant `dark:`.
 export const STATUS_CONFIG = {
   pending: {
     label: 'En attente',
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-400/10',
-    border: 'border-yellow-400/20',
+    color: 'text-yellow-700 dark:text-yellow-400',
+    bg: 'bg-yellow-100 dark:bg-yellow-400/10',
+    border: 'border-yellow-300 dark:border-yellow-400/20',
   },
   processing: {
     label: 'En cours',
-    color: 'text-blue-400',
-    bg: 'bg-blue-400/10',
-    border: 'border-blue-400/20',
+    color: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-blue-100 dark:bg-blue-400/10',
+    border: 'border-blue-300 dark:border-blue-400/20',
   },
   completed: {
     label: 'Terminé',
-    color: 'text-green-400',
-    bg: 'bg-green-400/10',
-    border: 'border-green-400/20',
+    color: 'text-green-700 dark:text-green-400',
+    bg: 'bg-green-100 dark:bg-green-400/10',
+    border: 'border-green-300 dark:border-green-400/20',
   },
   cancelled: {
     label: 'Annulé',
-    color: 'text-red-400',
-    bg: 'bg-red-400/10',
-    border: 'border-red-400/20',
+    color: 'text-red-700 dark:text-red-400',
+    bg: 'bg-red-100 dark:bg-red-400/10',
+    border: 'border-red-300 dark:border-red-400/20',
   },
   awaiting_confirmation: {
     label: 'Paiement envoyé',
-    color: 'text-purple-400',
-    bg: 'bg-purple-400/10',
-    border: 'border-purple-400/20',
+    color: 'text-purple-700 dark:text-purple-400',
+    bg: 'bg-purple-100 dark:bg-purple-400/10',
+    border: 'border-purple-300 dark:border-purple-400/20',
   },
 };
 

@@ -9,8 +9,9 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
 import {
-  AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER, DEPOSIT_SESSION_MINUTES,
+  AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBERS, DEPOSIT_SESSION_MINUTES,
 } from '../../utils/constants';
+import { mobcashInquiry } from '../../utils/mobcash';
 import WaitingCountdown from '../../components/WaitingCountdown';
 import OperatorLogo from '../../components/OperatorLogo';
 
@@ -133,6 +134,8 @@ export default function Deposit() {
 
   const [step, setStep] = useState(S.ACCOUNT_ID);
   const [accountId, setAccountId]     = useState('');
+  const [checkingId, setCheckingId]   = useState(false);
+  const [verifiedName, setVerifiedName] = useState('');
   const [operator, setOperator]       = useState(null);
   const [clientPhone, setClientPhone] = useState('');
   const [txId, setTxId]               = useState('');
@@ -163,11 +166,38 @@ export default function Deposit() {
 
   // ── Étape 0 : ID de compte ───────────────────────────────────────────────
   if (step === S.ACCOUNT_ID) {
-    const handleNext = () => {
-      if (!accountId.trim()) { setError('Veuillez entrer votre ID de compte.'); return; }
-      setError('');
-      setStep(S.CHOOSE_OP);
+    const handleAccountIdChange = (value) => {
+      setAccountId(value);
+      if (verifiedName) setVerifiedName(''); // ID modifié après vérification → re-vérifier
+      if (error) setError('');
     };
+
+    const handleNext = async () => {
+      if (!accountId.trim()) { setError('Veuillez entrer votre ID de compte.'); return; }
+
+      // Déjà vérifié pour cet ID : on continue directement.
+      if (verifiedName) { setStep(S.CHOOSE_OP); return; }
+
+      setError('');
+      setCheckingId(true);
+      const result = await mobcashInquiry(accountId.trim());
+      setCheckingId(false);
+
+      if (result.unavailable) {
+        // Vérification indisponible (service hors ligne) : on ne bloque pas
+        // le client pour autant, le contrôle habituel se fera côté agent.
+        setStep(S.CHOOSE_OP);
+        return;
+      }
+      if (!result.ok || !result.data.valid) {
+        setError(result.data?.error === 'Utilisateur introuvable'
+          ? `Aucun compte ${platformLabel} ne correspond à cet ID. Vérifiez le numéro.`
+          : result.error || result.data?.error || 'ID de compte invalide.');
+        return;
+      }
+      setVerifiedName(result.data.name);
+    };
+
     return (
       <div className="min-h-screen bg-gray-50">
         <Header title={`Recharge ${platformLabel}`} onBack={() => navigate(-1)} />
@@ -185,12 +215,21 @@ export default function Deposit() {
             <p className="text-base font-semibold text-gray-800 mb-3">Votre ID de compte {platformLabel}</p>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2"><User className="w-5 h-5 text-gray-400" /></div>
-              <input type="text" value={accountId} onChange={e => setAccountId(e.target.value)}
+              <input type="text" value={accountId} onChange={e => handleAccountIdChange(e.target.value)}
                 placeholder="Ex : 198287195"
                 className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
                 autoFocus onKeyDown={e => e.key === 'Enter' && handleNext()} />
             </div>
           </div>
+
+          {verifiedName && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <p className="text-green-700 text-sm">
+                Compte trouvé : <strong>{verifiedName}</strong>. Est-ce bien vous ?
+              </p>
+            </div>
+          )}
 
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -201,9 +240,13 @@ export default function Deposit() {
 
           {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
-          <button onClick={handleNext}
-            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">
-            Continuer <ArrowRight className="w-5 h-5" />
+          <button onClick={handleNext} disabled={checkingId}
+            className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+            {checkingId
+              ? <><RefreshCw className="w-5 h-5 animate-spin" /> Vérification...</>
+              : verifiedName
+                ? <>Confirmer et continuer <ArrowRight className="w-5 h-5" /></>
+                : <>Continuer <ArrowRight className="w-5 h-5" /></>}
           </button>
         </div>
       </div>
@@ -441,7 +484,7 @@ export default function Deposit() {
           )}
 
           {/* WhatsApp */}
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
             <MessageCircle className="w-5 h-5" />
             Contacter le support WhatsApp
@@ -462,7 +505,7 @@ export default function Deposit() {
             </div>
             <h2 className="text-xl font-bold text-gray-800">Transaction annulée</h2>
             <p className="text-gray-500 text-sm">L'agent a annulé votre demande. Contactez le support si vous avez déjà envoyé le paiement.</p>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+            <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}`} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
               <MessageCircle className="w-5 h-5" /> Contacter le support
             </a>
@@ -523,7 +566,7 @@ export default function Deposit() {
           />
 
           {/* WhatsApp */}
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
             <MessageCircle className="w-5 h-5" />
             Contacter le support WhatsApp

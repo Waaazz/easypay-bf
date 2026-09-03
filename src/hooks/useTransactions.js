@@ -7,14 +7,16 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   serverTimestamp,
   limit,
   runTransaction,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { notifyNewOrder } from '../utils/notifications';
+import { notifyNewOrder, notifyAgentAssigned } from '../utils/notifications';
 import { formatCFA } from '../utils/formatters';
 import { useAuth } from './useAuth';
 
@@ -53,13 +55,171 @@ export async function getActiveNumbers() {
  * availabilityChangedAt permet à l'admin d'afficher depuis quand un agent
  * est indisponible (ou disponible), indépendamment des autres mises à jour
  * du profil qui touchent updatedAt.
+ *
+ * En parallèle, journalise chaque bascule dans availabilityLogs (clôture de
+ * l'entrée ouverte précédente via son id stocké sur le profil + ouverture
+ * d'une nouvelle) pour permettre de calculer une durée cumulée
+ * d'indisponibilité sur une période (tableau de bord SuperAgent). On stocke
+ * l'id du log ouvert sur le profil plutôt que de le retrouver par requête,
+ * pour éviter un index composite juste pour ce lookup.
  */
 export async function setAgentAvailability(uid, available) {
-  await updateDoc(doc(db, 'users', uid), {
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
+  const previousLogId = userSnap.exists() ? userSnap.data().currentAvailabilityLogId : null;
+
+  const batch = writeBatch(db);
+
+  if (previousLogId) {
+    batch.update(doc(db, 'availabilityLogs', previousLogId), { endedAt: serverTimestamp() });
+  }
+
+  const newLogRef = doc(collection(db, 'availabilityLogs'));
+  batch.set(newLogRef, {
+    agentId: uid,
+    status: available ? 'available' : 'unavailable',
+    startedAt: serverTimestamp(),
+    endedAt: null,
+  });
+
+  batch.update(userRef, {
     available,
     availabilityChangedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    currentAvailabilityLogId: newLogRef.id,
   });
+
+  await batch.commit();
+}
+
+/**
+ * Hook SuperAgent : agents de son équipe (users.superAgentId == son uid).
+ */
+export function useSuperAgentTeam() {
+  const { user } = useAuth();
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return; }
+    const q = query(collection(db, 'users'), where('superAgentId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setAgents(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsubscribe;
+  }, [user]);
+
+  return { agents, loading };
+}
+
+/**
+ * Hook SuperAgent : transactions de son équipe (affectées à OU traitées par
+ * un agent supervisé), avec notification temps réel dès qu'une nouvelle
+ * transaction est affectée à l'un de ses agents.
+ *
+ * Deux requêtes séparées fusionnées côté client (même schéma que
+ * useAgentTransactions) : `assignedAgentId` couvre l'affectation initiale,
+ * `agentId` couvre les commandes réclamées après diffusion (ex. retraits
+ * sans agent dispo à la création) par un agent de l'équipe. Chaque requête
+ * est filtrée par `where(... 'in', teamAgentIds)` pour rester alignée avec
+ * la règle Firestore isTeamAgent() — une requête non filtrée échouerait
+ * (Firestore rejette toute liste contenant un document non autorisé).
+ */
+export function useSuperAgentTransactions(teamAgentIds, agentNamesById = {}) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const knownIdsRef = useRef(null);
+  // Ref plutôt que dépendance d'effet : agentNamesById est un nouvel objet à
+  // chaque rendu du composant appelant, on ne veut pas resouscrire les
+  // écoutes Firestore pour autant — seule la valeur au moment de la
+  // notification nous intéresse.
+  const agentNamesRef = useRef(agentNamesById);
+  agentNamesRef.current = agentNamesById;
+
+  const ids = (teamAgentIds || []).slice(0, 30);
+  const idsKey = ids.join(',');
+
+  useEffect(() => {
+    knownIdsRef.current = null;
+
+    if (ids.length === 0) {
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    const results = { assigned: [], processed: [] };
+
+    const merge = () => {
+      const byId = new Map();
+      [...results.assigned, ...results.processed].forEach((t) => byId.set(t.id, t));
+      const all = Array.from(byId.values());
+      const txs = all.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      if (knownIdsRef.current) {
+        const fresh = txs.filter((t) => t.status === 'pending' && !knownIdsRef.current.has(t.id));
+        fresh.forEach((t) => notifyAgentAssigned(t, agentNamesRef.current[t.assignedAgentId], formatCFA));
+      }
+      knownIdsRef.current = new Set(all.map((t) => t.id));
+
+      setTransactions(txs);
+      setLoading(false);
+    };
+
+    const onErr = () => setLoading(false);
+
+    const qAssigned = query(collection(db, 'transactions'), where('assignedAgentId', 'in', ids));
+    const qProcessed = query(collection(db, 'transactions'), where('agentId', 'in', ids));
+
+    const unsubAssigned = onSnapshot(qAssigned, (snap) => {
+      results.assigned = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      merge();
+    }, onErr);
+
+    const unsubProcessed = onSnapshot(qProcessed, (snap) => {
+      results.processed = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      merge();
+    }, onErr);
+
+    return () => {
+      unsubAssigned();
+      unsubProcessed();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
+
+  return { transactions, loading };
+}
+
+/**
+ * Hook SuperAgent : historique des bascules de disponibilité (available <->
+ * indisponible) des agents de son équipe — sert à calculer une durée
+ * cumulée d'indisponibilité sur une période (voir utils/availability.js).
+ */
+export function useTeamAvailabilityLogs(teamAgentIds) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const ids = (teamAgentIds || []).slice(0, 30);
+  const idsKey = ids.join(',');
+
+  useEffect(() => {
+    if (ids.length === 0) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
+    const q = query(collection(db, 'availabilityLogs'), where('agentId', 'in', ids));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
+
+  return { logs, loading };
 }
 
 /**

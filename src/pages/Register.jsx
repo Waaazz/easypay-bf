@@ -160,7 +160,7 @@ export default function Register() {
 
       <p className="text-gray-600 text-xs mt-4 text-center">
         En continuant, vous acceptez nos{' '}
-        <span className="text-gray-400">Conditions d'utilisation</span>
+        <Link to="/cgu" className="text-gray-400 hover:text-gray-300 underline">Conditions d'utilisation</Link>
       </p>
     </div>
   );

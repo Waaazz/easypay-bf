@@ -7,7 +7,7 @@ import {
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
-import { AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBER } from '../../utils/constants';
+import { AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBERS } from '../../utils/constants';
 import WaitingCountdown from '../../components/WaitingCountdown';
 import OperatorLogo from '../../components/OperatorLogo';
 
@@ -583,7 +583,7 @@ export default function Canalbox() {
             </div>
           )}
 
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
             <MessageCircle className="w-5 h-5" />
             Contacter le support WhatsApp
@@ -603,7 +603,7 @@ export default function Canalbox() {
           </div>
           <h2 className="text-xl font-bold text-gray-800">Transaction annulée</h2>
           <p className="text-gray-500 text-sm">L'agent a annulé votre demande. Contactez le support si vous avez déjà envoyé le paiement.</p>
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
             <MessageCircle className="w-5 h-5" /> Contacter le support
           </a>
@@ -658,7 +658,7 @@ export default function Canalbox() {
             onCancelled={() => setCancelled(true)}
           />
 
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://wa.me/${WHATSAPP_NUMBERS[0]}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border-2 border-green-500 text-green-600 font-semibold text-sm hover:bg-green-50 transition-all">
             <MessageCircle className="w-5 h-5" />
             Contacter le support WhatsApp

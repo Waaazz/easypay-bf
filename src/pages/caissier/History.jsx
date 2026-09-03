@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History as HistoryIcon, AlertCircle, Filter } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import ClientHeader from '../../components/ClientHeader';
 import ClientBottomNav from '../../components/ClientBottomNav';
 import TransactionCard from '../../components/TransactionCard';
@@ -14,7 +14,10 @@ const FILTERS = [
   { label: 'Terminé', value: 'completed' },
 ];
 
-export default function History() {
+// Historique des transactions créées par ce caissier au guichet — même
+// mécanisme que le client (clientId == uid connecté), le caissier étant
+// simplement l'utilisateur authentifié au moment de la création.
+export default function CaissierHistory() {
   const { transactions, loading } = useClientTransactions();
   const [typeFilter, setTypeFilter] = useState(null);
   const [selectedTx, setSelectedTx] = useState(null);
@@ -32,13 +35,9 @@ export default function History() {
       <ClientHeader />
 
       <div className="flex-1 mx-4 mb-4 bg-white rounded-3xl shadow-xl shadow-black/10 p-5 overflow-y-auto">
-        <div className="flex items-center gap-3 mb-4">
-          <HistoryIcon className="w-6 h-6 text-primary-600" />
-          <h1 className="text-xl font-bold text-gray-900">Historique</h1>
-        </div>
+        <h1 className="text-xl font-bold text-gray-900 mb-4">Mes transactions</h1>
 
-        {/* Filter pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide mb-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide mb-4">
           {FILTERS.map((f) => (
             <button
               key={f.label}
@@ -54,18 +53,9 @@ export default function History() {
           ))}
         </div>
 
-        {/* Summary */}
-        {!loading && (
-          <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
-            <Filter className="w-4 h-4" />
-            <span>{filtered.length} transaction{filtered.length > 1 ? 's' : ''}</span>
-          </div>
-        )}
-
-        {/* List */}
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="card animate-pulse">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-gray-200 rounded-full" />
@@ -73,7 +63,6 @@ export default function History() {
                     <div className="h-4 bg-gray-200 rounded w-32 mb-2" />
                     <div className="h-3 bg-gray-200 rounded w-24" />
                   </div>
-                  <div className="w-24 h-6 bg-gray-200 rounded" />
                 </div>
               </div>
             ))}
@@ -83,7 +72,7 @@ export default function History() {
             <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 font-medium">Aucune transaction trouvée</p>
             <p className="text-gray-400 text-sm mt-1">
-              {typeFilter ? 'Essayez un autre filtre' : 'Vous n\'avez pas encore de transactions'}
+              {typeFilter ? 'Essayez un autre filtre' : 'Créez votre première transaction depuis l\'onglet Transaction'}
             </p>
           </div>
         ) : (

@@ -3,7 +3,7 @@ import Navbar from './Navbar';
 
 export default function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Navbar />
       {/* Desktop: offset for sidebar */}
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">

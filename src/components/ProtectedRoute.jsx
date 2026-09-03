@@ -24,7 +24,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
       ? '/admin/login'
       : allowedRoles?.includes('agent')
         ? '/agent/login'
-        : '/login';
+        : allowedRoles?.includes('caissier')
+          ? '/caissier/login'
+          : allowedRoles?.includes('superagent')
+            ? '/superagent/login'
+            : '/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
@@ -33,6 +37,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     const role = userProfile.role;
     if (role === 'admin') return <Navigate to="/admin" replace />;
     if (role === 'agent') return <Navigate to="/agent" replace />;
+    if (role === 'caissier') return <Navigate to="/caissier" replace />;
+    if (role === 'superagent') return <Navigate to="/superagent" replace />;
     return <Navigate to="/dashboard" replace />;
   }
 

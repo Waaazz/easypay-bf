@@ -77,3 +77,24 @@ export function formatTxId(id) {
   if (!id) return '';
   return `#${id.slice(0, 8).toUpperCase()}`;
 }
+
+/**
+ * Temps d'attente du client sur une transaction (en ms) : de la création de
+ * la demande (createdAt) jusqu'à sa résolution (updatedAt si terminée/
+ * annulée), ou jusqu'à maintenant si encore active — donne à l'admin/
+ * superviseur une visibilité sur les délais de traitement réels, pas
+ * seulement sur le statut. À afficher avec formatDuration() (utils/availability.js).
+ */
+export function computeWaitMs(transaction) {
+  const created = transaction.createdAt?.toMillis
+    ? transaction.createdAt.toMillis()
+    : (transaction.createdAt ? new Date(transaction.createdAt).getTime() : null);
+  if (!created) return null;
+
+  const isFinal = transaction.status === 'completed' || transaction.status === 'cancelled';
+  const endMs = isFinal && transaction.updatedAt
+    ? (transaction.updatedAt.toMillis ? transaction.updatedAt.toMillis() : new Date(transaction.updatedAt).getTime())
+    : Date.now();
+
+  return Math.max(0, endMs - created);
+}

@@ -72,3 +72,31 @@ export function notifyNewOrder(tx, formatCFA) {
     // (il faudrait passer par un service worker) — le son a déjà joué, on ignore.
   }
 }
+
+// Notifie un SuperAgent qu'une transaction vient d'être affectée à l'un des
+// agents de son équipe — même mécanique que notifyNewOrder, wording différent.
+export function notifyAgentAssigned(tx, agentName, formatCFA) {
+  playChime();
+
+  if (getNotificationPermission() !== 'granted') return;
+
+  const isDeposit = tx.type === 'deposit';
+  const title = `${isDeposit ? 'Dépôt' : 'Retrait'} affecté à ${agentName || 'un agent'}`;
+  const amount = formatCFA ? formatCFA(tx.amount) : `${tx.amount} FCFA`;
+  const body = `${amount} — ${(tx.platform || '').toUpperCase()}`;
+
+  try {
+    const notif = new Notification(title, {
+      body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: tx.id,
+    });
+    notif.onclick = () => {
+      window.focus();
+      notif.close();
+    };
+  } catch {
+    // best-effort, voir notifyNewOrder
+  }
+}

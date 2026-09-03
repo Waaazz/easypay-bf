@@ -27,7 +27,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/60 dark:bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -36,14 +36,14 @@ export default function TransactionDetailModal({ transaction, onClose }) {
       >
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-white font-bold text-lg">Détail transaction</h2>
+            <h2 className="text-gray-900 dark:text-white font-bold text-lg">Détail transaction</h2>
             <p className="text-gray-500 text-sm">{formatTxId(transaction.id)}</p>
           </div>
           <div className="flex items-center gap-3">
             <StatusBadge status={transaction.status} />
             <button
               onClick={onClose}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
             >
               <X className="w-5 h-5" />
             </button>
@@ -52,10 +52,10 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         <div className="space-y-3">
           {rows.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3">
+            <div key={label} className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3">
               <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
-              <span className="text-white font-medium text-sm truncate">{value}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
+              <span className="text-gray-900 dark:text-white font-medium text-sm truncate">{value}</span>
             </div>
           ))}
         </div>

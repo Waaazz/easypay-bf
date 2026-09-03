@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function userRole() {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+    function isAdmin()      { return userRole() == 'admin'; }
+    // Vrai pour l'admin "principal" (le compte historique, ou tout admin créé
+    // avec isPrincipal explicitement true) — par défaut (champ absent) un
+    // admin est considéré principal, pour ne pas casser les comptes admin
+    // existants créés avant l'introduction des admins adjoints. Seul un
+    // principal peut créer/modifier/supprimer un AUTRE compte admin, pour
+    // qu'un adjoint ne puisse pas se donner plus de pouvoir ni en créer d'autres.
+    function isPrincipalAdmin() {
+      return isAdmin() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPrincipal != false;
+    }
+    function isAgent()      { return userRole() == 'agent'; }
+    function isCaissier()   { return userRole() == 'caissier'; }
+    function isSuperAgent() { return userRole() == 'superagent'; }
+    function isStaff()      { return isAdmin() || isAgent() || isCaissier(); }
+
+    // Vrai si `uid` est un agent supervisé par le SuperAgent actuellement
+    // connecté. Un SuperAgent ne voit que son équipe, jamais tous les agents
+    // (contrairement à isStaff() qui donne un accès global) — d'où une
+    // fonction dédiée plutôt qu'un ajout à isStaff().
+    function isTeamAgent(uid) {
+      return uid != null &&
+        get(/databases/$(database)/documents/users/$(uid)).data.superAgentId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      // Les profils agent sont consultables par tout visiteur connecté (y
+      // compris anonyme) : un client doit pouvoir voir quel agent est
+      // disponible et son numéro Mobile Money avant de faire un dépôt/retrait.
+      // Un SuperAgent peut en plus lire les fiches des agents de son équipe.
+      allow read:   if isSignedIn() && (
+        request.auth.uid == userId || isStaff() || resource.data.role == 'agent' ||
+        (isSuperAgent() && resource.data.superAgentId == request.auth.uid)
+      );
+      // Un client s'inscrivant lui-même ne peut créer sa fiche qu'avec le
+      // rôle 'client' ; seul l'admin peut créer un compte agent/caissier/
+      // superagent ou attribuer un rôle arbitraire (sinon n'importe qui
+      // pourrait s'auto-créer un compte 'admin' via le SDK Firestore). Créer
+      // un compte 'admin' est en plus réservé au principal (isPrincipalAdmin)
+      // — un adjoint ne peut pas créer d'autres admins.
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && request.resource.data.role == 'client') ||
+        (isAdmin() && (request.resource.data.role != 'admin' || isPrincipalAdmin()))
+      );
+      // Le propriétaire peut modifier sa propre fiche, mais jamais son
+      // `role`, son `superAgentId` ou son `isPrincipal` (élévation de
+      // privilège sinon) ; seul l'admin peut changer ces champs — et modifier
+      // la fiche d'un AUTRE admin est en plus réservé au principal. Même
+      // pattern que `transactions` ci-dessous (diff().affectedKeys()).
+      allow update: if isSignedIn() && (
+        (isAdmin() && resource.data.role != 'admin') ||
+        (isAdmin() && resource.data.role == 'admin' && isPrincipalAdmin()) ||
+        (request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'superAgentId', 'isPrincipal']))
+      );
+      allow delete: if isAdmin() && (resource.data.role != 'admin' || isPrincipalAdmin());
+    }
+
+    match /transactions/{txId} {
+      allow create: if isSignedIn();
+      // Un SuperAgent peut lire les transactions assignées à / traitées par
+      // un agent de son équipe (lecture seule — jamais de write).
+      allow read:   if isSignedIn() && (
+        resource.data.clientId == request.auth.uid || isStaff() ||
+        (isSuperAgent() && (isTeamAgent(resource.data.assignedAgentId) || isTeamAgent(resource.data.agentId)))
+      );
+      // Le client propriétaire de la transaction peut uniquement confirmer
+      // avoir payé (pending -> awaiting_confirmation), sans toucher à aucun
+      // autre champ — toute autre transition (compléter, annuler, modifier
+      // le montant...) reste réservée à l'agent/admin.
+      allow update: if isSignedIn() && (
+        isAgent() || isAdmin() ||
+        (resource.data.clientId == request.auth.uid &&
+         resource.data.status == 'pending' &&
+         request.resource.data.status == 'awaiting_confirmation' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Historique des bascules de disponibilité d'un agent (available <->
+    // indisponible), utilisé pour calculer la durée cumulée d'indisponibilité
+    // sur une période (tableau de bord SuperAgent/admin). Un agent ne peut
+    // créer/clore que ses propres entrées ; la lecture est réservée à
+    // l'admin et au SuperAgent de son équipe.
+    match /availabilityLogs/{logId} {
+      allow create: if isAgent() && request.resource.data.agentId == request.auth.uid;
+      allow update: if isAgent() && resource.data.agentId == request.auth.uid;
+      allow read:   if isAdmin() || (isSuperAgent() && isTeamAgent(resource.data.agentId));
+      allow delete: if isAdmin();
+    }
+
+    // Heures de connexion/déconnexion (login/logout) — tous rôles internes
+    // (agent/caissier/superagent/admin), pour que l'admin voie "l'heure de
+    // début et de descente" de chaque agent/caissier/superviseur/admin adjoint.
+    // Chacun ne peut créer/clore que ses propres entrées, et l'update ne
+    // touche jamais rien d'autre que endedAt (pas de falsification de
+    // startedAt après coup).
+    match /sessionLogs/{logId} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt']);
+      allow read:   if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Index nom d'utilisateur -> email synthétique, pour permettre la
+    // connexion caissier/SuperAgent par nom d'utilisateur plutôt que par
+    // numéro : la page de login (encore anonyme) doit pouvoir résoudre le
+    // username en email avant d'appeler signInWithEmailAndPassword.
+    // Ne contient volontairement que {email, role} — aucune donnée
+    // personnelle. Seul l'admin peut créer/modifier ces entrées (création de
+    // compte ou assignation d'un username à un compte existant).
+    match /usernames/{username} {
+      allow read:   if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

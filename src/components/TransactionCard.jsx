@@ -10,7 +10,7 @@ export default function TransactionCard({ transaction, onClick }) {
 
   return (
     <div
-      className="card hover:border-gray-700 transition-all duration-200 cursor-pointer"
+      className="card hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
@@ -29,11 +29,11 @@ export default function TransactionCard({ transaction, onClick }) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-gray-900 dark:text-white">
               {isDeposit ? 'Dépôt' : 'Retrait'}
             </span>
             {operator && (
-              <span className="text-xs text-gray-400">• {operator.name}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">• {operator.name}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
