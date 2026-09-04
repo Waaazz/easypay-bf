@@ -183,7 +183,7 @@ export default function Withdrawal() {
   const [activeAgents, setActiveAgents] = useState(null);
 
   useEffect(() => {
-    getActiveNumbers().then(setActiveAgents);
+    getActiveNumbers(platform).then(setActiveAgents);
   }, []);
 
   const next = (validate) => {

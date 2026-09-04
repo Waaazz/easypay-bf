@@ -191,7 +191,7 @@ export default function CanalPlus() {
   }, []);
 
   useEffect(() => {
-    getActiveNumbers().then(data => {
+    getActiveNumbers('canalplus').then(data => {
       setLoadingAgents(false);
       const picks = {};
       AGENT_NUMBERS.forEach(op => {

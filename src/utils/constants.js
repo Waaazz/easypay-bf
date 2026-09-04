@@ -35,6 +35,19 @@ export const AGENT_NUMBERS = [
   },
 ];
 
+// Plateformes que peut gérer un agent (paris sportifs + abonnements) —
+// assignées depuis admin/Agents.jsx, utilisées par getActiveNumbers() pour
+// router en priorité les dépôts/retraits/paiements vers un agent compétent
+// (voir useTransactions.js). Un agent sans `platforms` défini est considéré
+// comme gérant tout (comptes créés avant l'ajout de ce champ).
+export const AGENT_PLATFORMS = [
+  { id: '1xbet', label: '1XBET' },
+  { id: 'melbet', label: 'MELBET' },
+  { id: 'betwinner', label: 'BETWINNER' },
+  { id: 'canalplus', label: 'CANAL+' },
+  { id: 'canalbox', label: 'CANALBOX' },
+];
+
 // Générateurs de codes USSD par opérateur (Orange confirmé, Telmob/Telecel à vérifier)
 export const USSD_CODE = {
   orange:  (agentRaw, amount) => `*144*2*1*${agentRaw}*${amount}#`,

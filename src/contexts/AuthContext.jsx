@@ -375,7 +375,10 @@ export function AuthProvider({ children }) {
   // username (optionnel) : l'agent pourra alors se connecter par numéro OU
   // par nom d'utilisateur (voir loginAgent) — le compte Firebase Auth reste
   // créé par numéro comme avant, le username n'est qu'un pointeur en plus.
-  const createAgentAccount = async (name, phone, password, operators = {}, username = '') => {
+  // platforms (optionnel) : liste des plateformes que l'agent gère (voir
+  // AGENT_PLATFORMS) — un tableau vide/absent équivaut à "toutes", voir
+  // getActiveNumbers() dans useTransactions.js.
+  const createAgentAccount = async (name, phone, password, operators = {}, username = '', platforms = []) => {
     const email = phoneToEmail(phone, 'agent');
     const digits = phone.replace(/\D/g, '');
     const normalized = digits.startsWith('226') ? digits : `226${digits}`;
@@ -408,6 +411,7 @@ export function AuthProvider({ children }) {
         active: true,
         operators: cleanOperators,
         username: normalizedUsername || null,
+        platforms: platforms.length > 0 ? platforms : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

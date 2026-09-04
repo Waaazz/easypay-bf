@@ -20,6 +20,7 @@ import UsernameAssign from '../../components/UsernameAssign';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDate, formatCFA, formatRelativeTime } from '../../utils/formatters';
+import { AGENT_PLATFORMS } from '../../utils/constants';
 
 const OPERATOR_LABELS = {
   orange:  { emoji: '🟠', name: 'Orange Money' },
@@ -84,10 +85,11 @@ function StatusDot({ color, label }) {
 // l'admin sous l'information. Les alertes ne s'affichent que si elles sont
 // réellement pertinentes (charge élevée, taux d'annulation anormal, agent
 // indisponible depuis longtemps) plutôt que d'empiler des badges en continu.
-function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank, superAgents, onAssignSuperAgent }) {
+function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank, superAgents, onAssignSuperAgent, onAssignPlatforms }) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [assigningSuperAgent, setAssigningSuperAgent] = useState(false);
+  const [assigningPlatforms, setAssigningPlatforms] = useState(false);
 
   const handleToggle = async () => {
     setLoading(true);
@@ -99,6 +101,20 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
     setAssigningSuperAgent(true);
     await onAssignSuperAgent(agent.uid, e.target.value || null);
     setAssigningSuperAgent(false);
+  };
+
+  // `platforms` absent/null = gère tout ; une case cochée/décochée part
+  // toujours de la liste complète (comportement par défaut) plutôt que
+  // d'un tableau vide, pour que le premier clic retire bien une seule
+  // plateforme au lieu d'ajouter la première à une liste vide.
+  const agentPlatforms = agent.platforms || AGENT_PLATFORMS.map(p => p.id);
+  const handlePlatformToggle = async (platformId) => {
+    const next = agentPlatforms.includes(platformId)
+      ? agentPlatforms.filter(p => p !== platformId)
+      : [...agentPlatforms, platformId];
+    setAssigningPlatforms(true);
+    await onAssignPlatforms(agent.uid, next);
+    setAssigningPlatforms(false);
   };
 
   const operatorEntries = Object.entries(agent.operators || {}).filter(([, v]) => v);
@@ -251,6 +267,37 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
 
           <UsernameAssign uid={agent.uid} role="agent" username={agent.username} />
 
+          {/* Plateformes gérées — sert à router en priorité les dépôts/
+              retraits/paiements vers un agent compétent (voir
+              getActiveNumbers() dans useTransactions.js). Aucune case
+              décochée = gère tout, comportement par défaut. */}
+          <div>
+            <label className="text-gray-500 text-xs mb-1.5 block">Plateformes gérées</label>
+            <div className="flex flex-wrap gap-1.5">
+              {AGENT_PLATFORMS.map((p) => {
+                const checked = agentPlatforms.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handlePlatformToggle(p.id)}
+                    disabled={assigningPlatforms}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all disabled:opacity-50
+                      ${checked
+                        ? 'bg-primary-500/15 text-primary-400 border-primary-500/30'
+                        : 'bg-gray-800 text-gray-500 border-gray-700'
+                      }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+            {!agent.platforms && (
+              <p className="text-gray-600 text-xs mt-1">Toutes plateformes (aucune restriction définie).</p>
+            )}
+          </div>
+
           <SessionLogsPanel uid={agent.uid} name={agent.name} />
 
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -400,9 +447,14 @@ function CreateAgentModal({ onClose }) {
   const [opOrange,  setOpOrange]  = useState('');
   const [opTelmob,  setOpTelmob]  = useState('');
   const [opTelecel, setOpTelecel] = useState('');
+  const [platforms, setPlatforms] = useState(AGENT_PLATFORMS.map(p => p.id));
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [success,   setSuccess]   = useState('');
+
+  const togglePlatform = (id) => {
+    setPlatforms(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  };
 
   const handleCreate = async () => {
     if (!name.trim() || !phone.trim() || !password) return;
@@ -421,13 +473,14 @@ function CreateAgentModal({ onClose }) {
     if (opTelmob.trim())  operators.telmob  = opTelmob.replace(/\s/g, '');
     if (opTelecel.trim()) operators.telecel = opTelecel.replace(/\s/g, '');
 
-    const result = await createAgentAccount(name.trim(), phone, password, operators, username.trim());
+    const result = await createAgentAccount(name.trim(), phone, password, operators, username.trim(), platforms);
     setLoading(false);
 
     if (result.success) {
       setSuccess(`Compte créé pour ${name.trim()}`);
       setName(''); setUsername(''); setPhone(''); setPassword('');
       setOpOrange(''); setOpTelmob(''); setOpTelecel('');
+      setPlatforms(AGENT_PLATFORMS.map(p => p.id));
     } else {
       setError(result.error);
     }
@@ -491,6 +544,32 @@ function CreateAgentModal({ onClose }) {
               <OperatorInput emoji="🔴" label="Telecel" value={opTelecel}
                 onChange={setOpTelecel} placeholder="55 XX XX XX" />
             </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-3">
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">
+              Plateformes gérées
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {AGENT_PLATFORMS.map((p) => {
+                const checked = platforms.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePlatform(p.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
+                      ${checked
+                        ? 'bg-primary-500/15 text-primary-400 border-primary-500/30'
+                        : 'bg-gray-800 text-gray-500 border-gray-700'
+                      }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-gray-600 text-xs mt-2">Toutes cochées par défaut — décochez celles que cet agent ne gère pas.</p>
           </div>
 
           {error && (
@@ -557,6 +636,10 @@ export default function AdminAgents() {
 
   const assignSuperAgent = async (agentUid, superAgentId) => {
     await updateDoc(doc(db, 'users', agentUid), { superAgentId, updatedAt: serverTimestamp() });
+  };
+
+  const assignPlatforms = async (agentUid, platforms) => {
+    await updateDoc(doc(db, 'users', agentUid), { platforms, updatedAt: serverTimestamp() });
   };
 
   // Stats de performance par agent : transactions terminées (dépôts/retraits,
@@ -739,7 +822,8 @@ export default function AdminAgents() {
                 activeLoad={activeLoad[agent.uid] || 0}
                 rank={index + 1}
                 superAgents={superAgents}
-                onAssignSuperAgent={assignSuperAgent} />
+                onAssignSuperAgent={assignSuperAgent}
+                onAssignPlatforms={assignPlatforms} />
             ))}
           </div>
         )}

@@ -23,8 +23,16 @@ import { useAuth } from './useAuth';
 /**
  * Construit la map des numéros actifs depuis les agents Firestore.
  * Un agent est assignable si active=true ET available=true ET a des numéros configurés.
+ *
+ * `platform` (optionnel) filtre par plateforme gérée (voir `platforms` sur le
+ * profil agent, assigné depuis admin/Agents.jsx) : un agent sans `platforms`
+ * défini est considéré comme gérant TOUTES les plateformes (comportement par
+ * défaut pour ne pas priver de commandes les agents créés avant l'ajout de ce
+ * champ). Si, pour un opérateur donné, aucun agent compétent n'est
+ * disponible, on retombe sur la liste complète de cet opérateur plutôt que de
+ * laisser le client bloqué sans aucun agent.
  */
-export async function getActiveNumbers() {
+export async function getActiveNumbers(platform = null) {
   try {
     const q = query(
       collection(db, 'users'),
@@ -33,16 +41,24 @@ export async function getActiveNumbers() {
       where('available', '==', true)
     );
     const snap = await getDocs(q);
-    const result = {};
+    const all = {};
     snap.docs.forEach(d => {
-      const { operators, name } = d.data();
+      const { operators, name, platforms } = d.data();
       const uid = d.id;
       if (!operators) return;
       Object.entries(operators).forEach(([opId, number]) => {
         if (!number) return;
-        if (!result[opId]) result[opId] = [];
-        result[opId].push({ agentId: uid, agentName: name || 'Agent', number });
+        if (!all[opId]) all[opId] = [];
+        all[opId].push({ agentId: uid, agentName: name || 'Agent', number, platforms: platforms || null });
       });
+    });
+
+    if (!platform) return Object.keys(all).length > 0 ? all : null;
+
+    const result = {};
+    Object.entries(all).forEach(([opId, agents]) => {
+      const competent = agents.filter(a => !a.platforms || a.platforms.includes(platform));
+      result[opId] = competent.length > 0 ? competent : agents;
     });
     return Object.keys(result).length > 0 ? result : null;
   } catch {

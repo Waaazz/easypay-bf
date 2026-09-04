@@ -173,7 +173,7 @@ export default function Canalbox() {
   }, []);
 
   useEffect(() => {
-    getActiveNumbers().then(data => {
+    getActiveNumbers('canalbox').then(data => {
       setLoadingAgents(false);
       const picks = {};
       AGENT_NUMBERS.forEach(op => {

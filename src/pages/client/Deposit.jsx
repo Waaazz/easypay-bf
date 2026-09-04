@@ -152,7 +152,7 @@ export default function Deposit() {
   const [pickedAgents, setPickedAgents] = useState({});
 
   useEffect(() => {
-    getActiveNumbers().then(data => {
+    getActiveNumbers(platform).then(data => {
       setLoadingAgents(false);
       const picks = {};
       AGENT_NUMBERS.forEach(op => {
