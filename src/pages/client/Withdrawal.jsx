@@ -8,7 +8,7 @@ import {
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
-import { FEES, WHATSAPP_NUMBERS } from '../../utils/constants';
+import { FEES, WHATSAPP_NUMBERS, isValidOperatorPhone } from '../../utils/constants';
 import WaitingCountdown from '../../components/WaitingCountdown';
 
 // ─── Étapes ────────────────────────────────────────────────────────────────
@@ -252,7 +252,9 @@ export default function Withdrawal() {
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
         <button onClick={() => next(() => {
-          if (!phone.replace(/\s/g, '') || phone.replace(/\s/g, '').length < 8) return 'Numéro Orange Money invalide (8 chiffres).';
+          const digits = phone.replace(/\s/g, '');
+          if (!digits || digits.length < 8) return 'Numéro Orange Money invalide (8 chiffres).';
+          if (!isValidOperatorPhone(digits, 'orange')) return 'Ce numéro ne correspond pas à un numéro Orange Money. Vérifiez les 2 premiers chiffres.';
           if (!accountName.trim()) return 'Veuillez entrer le nom du titulaire.';
         })}
           className="w-full bg-[#316516] hover:bg-[#2a5314] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all">

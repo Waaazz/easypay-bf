@@ -35,6 +35,25 @@ export const AGENT_NUMBERS = [
   },
 ];
 
+// Préfixes des 2 premiers chiffres (après le +226) par opérateur, pour
+// vérifier qu'un client saisit bien un numéro du bon opérateur (ex: pas un
+// numéro Telmob quand on lui demande un numéro Orange Money). Ids alignés
+// sur AGENT_NUMBERS ('orange' / 'telmob' / 'telecel').
+export const OPERATOR_PHONE_PREFIXES = {
+  orange: ['04', '05', '06', '07', '44', '45', '46', '54', '55', '56', '57', '64', '65', '66', '67', '74', '75', '76', '77'],
+  telmob: ['01', '02', '03', '50', '51', '52', '53', '60', '61', '62', '63', '70', '71', '72', '73'],
+  telecel: ['58', '59', '68', '69', '78', '79'],
+};
+
+/** Vrai si `phone` (avec ou sans indicatif/espaces) commence par un préfixe valide pour `operatorId`. */
+export function isValidOperatorPhone(phone, operatorId) {
+  const prefixes = OPERATOR_PHONE_PREFIXES[operatorId];
+  if (!prefixes) return true;
+  let digits = (phone || '').replace(/\D/g, '');
+  if (digits.startsWith('226') && digits.length > 8) digits = digits.slice(3);
+  return prefixes.some((p) => digits.startsWith(p));
+}
+
 // Plateformes que peut gérer un agent (paris sportifs + abonnements) —
 // assignées depuis admin/Agents.jsx, utilisées par getActiveNumbers() pour
 // router en priorité les dépôts/retraits/paiements vers un agent compétent

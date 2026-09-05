@@ -9,7 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useTransactionActions, getActiveNumbers } from '../../hooks/useTransactions';
 import {
-  AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBERS, DEPOSIT_SESSION_MINUTES,
+  AGENT_NUMBERS, USSD_CODE, WHATSAPP_NUMBERS, DEPOSIT_SESSION_MINUTES, isValidOperatorPhone,
 } from '../../utils/constants';
 import { mobcashInquiry } from '../../utils/mobcash';
 import WaitingCountdown from '../../components/WaitingCountdown';
@@ -309,6 +309,10 @@ export default function Deposit() {
     const handleSubmit = async () => {
       const phone = clientPhone.replace(/\s/g, '');
       if (phone.length < 8) { setError('Veuillez entrer un numéro valide (8 chiffres).'); return; }
+      if (!isValidOperatorPhone(phone, operator.id)) {
+        setError(`Ce numéro ne correspond pas à un numéro ${operator.name}. Vérifiez les 2 premiers chiffres.`);
+        return;
+      }
       setError('');
 
       // Config chargée au choix de l'opérateur depuis /config/activeNumbers
