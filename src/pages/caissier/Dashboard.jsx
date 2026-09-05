@@ -13,7 +13,7 @@ const PLATFORMS = [
   { id: 'canalbox', label: 'CANALBOX', color: 'text-[#0072ce]', selectedBg: 'bg-white', subscription: true },
 ];
 
-const PAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '', '0', 'del'];
+const PAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '', 'del'];
 const MIN_AMOUNT = 300;
 
 // Le caissier crée un dépôt/retrait au guichet pour un client physique sans
