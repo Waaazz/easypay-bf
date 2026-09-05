@@ -190,7 +190,7 @@ export default function Home() {
           <button
             onClick={() => handleAction('deposit')}
             disabled={!canProceed}
-            className="group flex-1 rounded-2xl bg-gradient-to-b from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-white font-bold py-3 flex items-center justify-center gap-2 text-sm shadow-lg shadow-gold-900/30 ring-1 ring-white/10 transition-all duration-150 active:scale-[0.97] active:shadow-md disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+            className="group flex-1 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3 flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-900/30 ring-1 ring-white/10 transition-all duration-150 active:scale-[0.97] active:shadow-md disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
           >
             <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-active:scale-90 transition-transform">
               <Plus className="w-4 h-4" />
@@ -201,7 +201,7 @@ export default function Home() {
             <button
               onClick={() => handleAction('withdrawal')}
               disabled={!canProceed}
-              className="group flex-1 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3 flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-900/30 ring-1 ring-white/10 transition-all duration-150 active:scale-[0.97] active:shadow-md disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="group flex-1 rounded-2xl bg-gradient-to-b from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-white font-bold py-3 flex items-center justify-center gap-2 text-sm shadow-lg shadow-gold-900/30 ring-1 ring-white/10 transition-all duration-150 active:scale-[0.97] active:shadow-md disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-active:scale-90 transition-transform">
                 <Minus className="w-4 h-4" />
