@@ -13,7 +13,6 @@ const PLATFORMS = [
 ];
 
 const PAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '', '0', 'del'];
-const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 25000];
 const MIN_AMOUNT = 300;
 
 export default function Home() {
@@ -40,10 +39,6 @@ export default function Home() {
     setAmount((prev) => prev + key);
   };
 
-  const handleQuickAmount = (value) => {
-    setAmount(String(value));
-  };
-
   const handleAction = (type) => {
     if (!platform) return;
     if (isCanalPlus && type === 'deposit') {
@@ -61,6 +56,9 @@ export default function Home() {
 
   const platformLabel = selectedPlatform?.label || '';
   const isSubscription = !!selectedPlatform?.subscription;
+  // Affiché dès que le client a commencé à taper un montant insuffisant —
+  // pas seulement au clic sur un bouton Dépôt/Retrait déjà désactivé.
+  const belowMinimum = !isSubscription && amount !== '' && (parseInt(amount) || 0) < MIN_AMOUNT;
   const canProceed = !!platform && (isSubscription || (parseInt(amount) || 0) >= MIN_AMOUNT);
 
   return (
@@ -75,6 +73,20 @@ export default function Home() {
         >
           Apollon+Afrik
         </a>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setWaOpen((v) => !v)}
+            className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-full flex items-center gap-2 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.522 5.849L.057 23.571a.5.5 0 0 0 .612.612l5.722-1.465A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.89 0-3.663-.523-5.176-1.432l-.37-.222-3.846.985.999-3.742-.243-.386A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+            </svg>
+            Support
+          </button>
+          <WhatsAppMenu open={waOpen} onClose={() => setWaOpen(false)} align="right" />
+        </div>
       </header>
 
       {/* Zone défilable : sélecteur de plateforme + pavé numérique. Le header
@@ -128,7 +140,7 @@ export default function Home() {
             ) : (
               <>
                 {/* Amount display */}
-                <div className="flex items-center justify-center mb-2">
+                <div className="flex items-center justify-center mb-1">
                   <div className="inline-flex items-baseline gap-2 px-1 pb-1 border-b-2 border-primary-100">
                     <span className="text-3xl font-extrabold text-gray-900 tabular-nums tracking-tight">
                       {amount ? parseInt(amount).toLocaleString('fr-FR') : '0'}
@@ -137,22 +149,11 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Quick amounts */}
-                <div className="flex flex-wrap justify-center gap-1.5 mb-2">
-                  {QUICK_AMOUNTS.map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => handleQuickAmount(value)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all duration-150 active:scale-95 ${
-                        amount === String(value)
-                          ? 'bg-primary-600 border-primary-600 text-white'
-                          : 'bg-primary-50 border-primary-100 text-primary-700 hover:bg-primary-100'
-                      }`}
-                    >
-                      {value.toLocaleString('fr-FR')}
-                    </button>
-                  ))}
-                </div>
+                {belowMinimum && (
+                  <p className="text-red-500 text-xs font-medium text-center mb-2">
+                    Le montant minimum est de {MIN_AMOUNT.toLocaleString('fr-FR')} FCFA.
+                  </p>
+                )}
 
                 {/* Numpad grid */}
                 <div className="grid grid-cols-3 gap-2">
@@ -183,24 +184,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Bottom action buttons + Assistance + barre d'onglets : toujours visibles, hors de la zone défilable */}
+      {/* Bottom action buttons + barre d'onglets : toujours visibles, hors de la zone défilable */}
       <div className="flex-shrink-0">
-        <div className="flex justify-center pb-1 relative">
-          <button
-            type="button"
-            onClick={() => setWaOpen((v) => !v)}
-            className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.522 5.849L.057 23.571a.5.5 0 0 0 .612.612l5.722-1.465A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.89 0-3.663-.523-5.176-1.432l-.37-.222-3.846.985.999-3.742-.243-.386A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-            </svg>
-            Support
-          </button>
-          <WhatsAppMenu open={waOpen} onClose={() => setWaOpen(false)} />
-        </div>
-
-        <div className="flex gap-3 px-4 pb-2">
+        <div className="flex gap-3 px-4 pb-2 pt-1">
           <button
             onClick={() => handleAction('deposit')}
             disabled={!canProceed}

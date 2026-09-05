@@ -14,7 +14,6 @@ const PLATFORMS = [
 ];
 
 const PAD_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '', '0', 'del'];
-const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 25000];
 const MIN_AMOUNT = 300;
 
 // Le caissier crée un dépôt/retrait au guichet pour un client physique sans
@@ -44,10 +43,6 @@ export default function CaissierDashboard() {
     setAmount((prev) => prev + key);
   };
 
-  const handleQuickAmount = (value) => {
-    setAmount(String(value));
-  };
-
   const handleAction = (type) => {
     if (!platform) return;
     if (isCanalPlus && type === 'deposit') {
@@ -65,6 +60,7 @@ export default function CaissierDashboard() {
 
   const platformLabel = selectedPlatform?.label || '';
   const isSubscription = !!selectedPlatform?.subscription;
+  const belowMinimum = !isSubscription && amount !== '' && (parseInt(amount) || 0) < MIN_AMOUNT;
   const canProceed = !!platform && (isSubscription || (parseInt(amount) || 0) >= MIN_AMOUNT);
 
   return (
@@ -125,7 +121,7 @@ export default function CaissierDashboard() {
             ) : (
               <>
                 {/* Amount display */}
-                <div className="flex items-center justify-center mb-2">
+                <div className="flex items-center justify-center mb-1">
                   <div className="inline-flex items-baseline gap-2 px-1 pb-1 border-b-2 border-primary-100">
                     <span className="text-3xl font-extrabold text-gray-900 tabular-nums tracking-tight">
                       {amount ? parseInt(amount).toLocaleString('fr-FR') : '0'}
@@ -134,22 +130,11 @@ export default function CaissierDashboard() {
                   </div>
                 </div>
 
-                {/* Quick amounts */}
-                <div className="flex flex-wrap justify-center gap-1.5 mb-2">
-                  {QUICK_AMOUNTS.map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => handleQuickAmount(value)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all duration-150 active:scale-95 ${
-                        amount === String(value)
-                          ? 'bg-primary-600 border-primary-600 text-white'
-                          : 'bg-primary-50 border-primary-100 text-primary-700 hover:bg-primary-100'
-                      }`}
-                    >
-                      {value.toLocaleString('fr-FR')}
-                    </button>
-                  ))}
-                </div>
+                {belowMinimum && (
+                  <p className="text-red-500 text-xs font-medium text-center mb-2">
+                    Le montant minimum est de {MIN_AMOUNT.toLocaleString('fr-FR')} FCFA.
+                  </p>
+                )}
 
                 {/* Numpad grid */}
                 <div className="grid grid-cols-3 gap-2">
