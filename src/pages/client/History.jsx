@@ -10,8 +10,8 @@ const FILTERS = [
   { label: 'Tout', value: null },
   { label: 'Dépôts', value: 'deposit' },
   { label: 'Retraits', value: 'withdrawal' },
-  { label: 'En attente', value: 'pending' },
-  { label: 'Terminé', value: 'completed' },
+  { label: 'CANAL+', value: 'canalplus' },
+  { label: 'CANALBOX', value: 'canalbox' },
 ];
 
 export default function History() {
@@ -20,10 +20,13 @@ export default function History() {
   const [selectedTx, setSelectedTx] = useState(null);
 
   const filtered = transactions.filter((tx) => {
-    if (typeFilter === 'deposit' && tx.type !== 'deposit') return false;
-    if (typeFilter === 'withdrawal' && tx.type !== 'withdrawal') return false;
-    if (typeFilter === 'pending' && tx.status !== 'pending' && tx.status !== 'processing') return false;
-    if (typeFilter === 'completed' && tx.status !== 'completed') return false;
+    // "Dépôts"/"Retraits" désignent les paris sportifs (1xbet/melbet/
+    // betwinner) — CANAL+/CANALBOX sont des abonnements, comptés à part
+    // même si techniquement enregistrés comme type "deposit".
+    if (typeFilter === 'deposit') return tx.type === 'deposit' && tx.platform !== 'canalplus' && tx.platform !== 'canalbox';
+    if (typeFilter === 'withdrawal') return tx.type === 'withdrawal';
+    if (typeFilter === 'canalplus') return tx.platform === 'canalplus';
+    if (typeFilter === 'canalbox') return tx.platform === 'canalbox';
     return true;
   });
 

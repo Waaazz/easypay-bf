@@ -216,7 +216,7 @@ export default function Deposit() {
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2"><User className="w-5 h-5 text-gray-400" /></div>
               <input type="text" value={accountId} onChange={e => handleAccountIdChange(e.target.value)}
-                placeholder="Ex : 198287195"
+                placeholder="Ex : 198287195" maxLength={14}
                 className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
                 autoFocus onKeyDown={e => e.key === 'Enter' && handleNext()} />
             </div>

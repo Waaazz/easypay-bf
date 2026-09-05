@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpDown, History, User, Wallet } from 'lucide-react';
+import { ArrowUpDown, Target, History, User, Wallet } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 // Barre de navigation partagée par les pages client-facing et par l'espace
@@ -25,6 +25,10 @@ export default function ClientBottomNav({ active }) {
       <button onClick={() => navigate(transactionPath)} className={tabClass('transaction')}>
         <ArrowUpDown className="w-5 h-5" />
         <span className="text-[11px] font-semibold">Transaction</span>
+      </button>
+      <button type="button" disabled className="flex flex-col items-center gap-1 px-3 py-1 text-gray-300 cursor-not-allowed">
+        <Target className="w-5 h-5" />
+        <span className="text-[11px] font-semibold">Matchs</span>
       </button>
       {/* Pour un caissier déjà connecté, "Transaction" pointe déjà vers /caissier :
           afficher un onglet "Caissier" séparé serait une pure duplication. */}

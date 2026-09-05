@@ -17,10 +17,9 @@ export default function AgentLogin() {
     e.preventDefault();
     setError('');
 
-    // Accepte soit un numéro, soit un nom d'utilisateur — loginAgent détecte
-    // lequel des deux a été saisi (8+ chiffres = numéro).
-    if (phone.trim().length < 3) {
-      setError("Veuillez entrer votre numéro ou nom d'utilisateur.");
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 8) {
+      setError('Veuillez entrer un numéro valide.');
       return;
     }
     if (!password || password.length < 6) {
@@ -57,19 +56,24 @@ export default function AgentLogin() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Numéro ou nom d'utilisateur */}
+          {/* Numéro */}
           <div>
-            <label className="label">Numéro ou nom d'utilisateur</label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="70 00 00 00 ou ex : moussa.t"
-              className="input-field"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoFocus
-            />
+            <label className="label">Numéro de téléphone</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <span className="text-gray-400 text-sm font-medium">🇧🇫 +226</span>
+                <div className="w-px h-5 bg-gray-700" />
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="70 00 00 00"
+                className="input-field pl-24"
+                maxLength={12}
+                autoFocus
+              />
+            </div>
           </div>
 
           {/* Mot de passe */}

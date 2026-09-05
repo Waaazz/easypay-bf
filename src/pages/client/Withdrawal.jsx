@@ -94,7 +94,7 @@ function FeeBox({ amount }) {
 }
 
 // ─── Champ input ────────────────────────────────────────────────────────────
-function Field({ label, icon: Icon, value, onChange, placeholder, type = 'text', hint }) {
+function Field({ label, icon: Icon, value, onChange, placeholder, type = 'text', hint, maxLength }) {
   return (
     <div>
       <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
@@ -104,7 +104,7 @@ function Field({ label, icon: Icon, value, onChange, placeholder, type = 'text',
           <Icon className="w-5 h-5 text-gray-400" />
         </div>
         <input type={type} value={value} onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder} maxLength={maxLength}
           className="w-full bg-white border border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all" />
       </div>
     </div>
@@ -210,7 +210,7 @@ export default function Withdrawal() {
         </div>
 
         <Field label={`Votre ID de compte ${platformLabel}`} icon={User}
-          value={accountId} onChange={setAccountId} placeholder="Ex : 198287195" />
+          value={accountId} onChange={setAccountId} placeholder="Ex : 198287195" maxLength={14} />
 
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
