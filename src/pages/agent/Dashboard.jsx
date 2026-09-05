@@ -11,6 +11,7 @@ import { useAgentTransactions, useTransactionActions, setAgentAvailability } fro
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import { mobcashDeposit } from '../../utils/mobcash';
 import OperatorLogo from '../../components/OperatorLogo';
 import {
   isNotificationSupported, getNotificationPermission, requestNotificationPermission,
@@ -21,6 +22,9 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelInput, setShowCancelInput] = useState(false);
   const [loading, setLoading] = useState(false);
+  // État du crédit automatique MobCash (dépôts 1xBet uniquement) — null tant
+  // qu'aucune tentative n'a eu lieu sur cette commande.
+  const [mobcashStatus, setMobcashStatus] = useState(null);
 
   const isDeposit = transaction.type === 'deposit';
   const operator = isDeposit
@@ -32,6 +36,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
   // commandes déjà en cours créées avant ce changement.
   const isProcessing = transaction.status === 'processing';
   const canClaim = transaction.status === 'pending' || isAwaitingConfirm;
+  const isAutoCreditable = isDeposit && transaction.platform === '1xbet';
 
   // Numéro affiché : numéro spécifique de l'agent si disponible, sinon générique
   const displayNumber = isDeposit
@@ -39,6 +44,45 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
     : transaction.phone;
 
   const handleProcess = async () => {
+    setLoading(true);
+
+    // IMPORTANT : processOrder() fait passer la commande directement à
+    // 'completed' en un seul clic (pas d'étape 'processing' intermédiaire
+    // dans le flux actuel) — donc le crédit MobCash doit être tenté AVANT
+    // cet appel, pas après. Le cas isProcessing ne subsiste que pour
+    // d'éventuelles commandes déjà bloquées dans cet état légataire.
+    if (isAutoCreditable) {
+      setMobcashStatus({ state: 'loading' });
+      const res = await mobcashDeposit(transaction.accountId, transaction.amount);
+
+      if (res.unavailable) {
+        // Service injoignable OU délai dépassé côté navigateur — dans les
+        // deux cas on NE SAIT PAS si le dépôt a réellement été fait côté
+        // MobCash. On bloque la complétion automatique par sécurité :
+        // l'agent doit vérifier manuellement avant de forcer la validation.
+        setMobcashStatus({ state: 'unavailable', message: res.error });
+        setLoading(false);
+        return;
+      } else if (!res.ok || !res.data.success) {
+        setMobcashStatus({ state: 'error', message: res.data?.error || res.data?.reason || res.error || 'Échec du crédit automatique.' });
+        setLoading(false);
+        return; // pas de complétion automatique si le crédit a échoué
+      } else {
+        setMobcashStatus({ state: 'success', message: res.data.confirmationMessage || 'Compte crédité automatiquement sur 1xBet.' });
+      }
+    }
+
+    if (isProcessing) {
+      await onComplete(transaction.id);
+    } else {
+      await onProcess(transaction.id, agentName);
+    }
+    setLoading(false);
+  };
+
+  // Repli manuel : l'agent a vérifié/crédité lui-même sur MobCash, on termine
+  // sans retenter l'automatisation.
+  const handleForceComplete = async () => {
     setLoading(true);
     if (isProcessing) {
       await onComplete(transaction.id);
@@ -57,7 +101,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
 
   return (
     <div className={`card border transition-all ${
-      isProcessing ? 'border-blue-500/30' : 'border-gray-700 hover:border-gray-600'
+      isProcessing ? 'border-blue-500/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
     }`}>
       {/* Header */}
       <div className="flex items-center gap-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -71,7 +115,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white text-sm">
+            <span className="font-semibold text-gray-900 dark:text-white text-sm">
               {isDeposit ? 'Dépôt' : 'Retrait'}
             </span>
             <span className="text-gray-500 text-xs">{formatTxId(transaction.id)}</span>
@@ -92,7 +136,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
 
       {/* Détails expandés */}
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-gray-800 space-y-4">
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-4">
 
           {/* Alerte paiement confirmé par client */}
           {isAwaitingConfirm && (
@@ -106,16 +150,16 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
 
           {/* Infos client */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
               <p className="text-gray-500 text-xs mb-1">ID de compte {transaction.platform?.toUpperCase()}</p>
               <div className="flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-white text-sm font-bold">
+                <span className="text-gray-900 dark:text-white text-sm font-bold">
                   {transaction.accountId || '—'}
                 </span>
               </div>
             </div>
-            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">Client</p>
               <div className="flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-gray-400" />
@@ -124,11 +168,11 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                 </span>
               </div>
             </div>
-            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">{isDeposit ? 'N° du client' : 'Téléphone'}</p>
               <div className="flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-white text-sm font-medium">
+                <span className="text-gray-900 dark:text-white text-sm font-medium">
                   {isDeposit ? transaction.clientPhone : transaction.phone}
                 </span>
               </div>
@@ -136,7 +180,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
             {isDeposit && transaction.agentOperatorNumber && (
               <div className="bg-gray-800 rounded-xl px-3 py-2.5">
                 <p className="text-gray-500 text-xs mb-1">Votre numéro {operator?.name}</p>
-                <span className="text-white text-sm font-medium">{transaction.agentOperatorNumber}</span>
+                <span className="text-gray-900 dark:text-white text-sm font-medium">{transaction.agentOperatorNumber}</span>
               </div>
             )}
             {transaction.platform === 'canalplus' && (
@@ -145,14 +189,14 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                   <p className="text-gray-500 text-xs mb-1">Titulaire décodeur</p>
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-white text-sm font-medium truncate">
+                    <span className="text-gray-900 dark:text-white text-sm font-medium truncate">
                       {transaction.holderName || '—'}
                     </span>
                   </div>
                 </div>
-                <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Offre à recharger</p>
-                  <span className="text-white text-sm font-bold">
+                  <span className="text-gray-900 dark:text-white text-sm font-bold">
                     {transaction.offerName} — {transaction.durationLabel}
                     {transaction.optionName && transaction.optionName !== 'Aucune option' ? ` + ${transaction.optionName}` : ''}
                   </span>
@@ -165,14 +209,14 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                   <p className="text-gray-500 text-xs mb-1">Titulaire box</p>
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-white text-sm font-medium truncate">
+                    <span className="text-gray-900 dark:text-white text-sm font-medium truncate">
                       {transaction.holderName || '—'}
                     </span>
                   </div>
                 </div>
-                <div className="bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5 col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Offre à renouveler</p>
-                  <span className="text-white text-sm font-bold">
+                  <span className="text-gray-900 dark:text-white text-sm font-bold">
                     {transaction.offerName} — {transaction.durationLabel}
                   </span>
                 </div>
@@ -184,7 +228,7 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                   <p className="text-gray-500 text-xs mb-1">Titulaire Orange Money</p>
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-white text-sm font-medium truncate">
+                    <span className="text-gray-900 dark:text-white text-sm font-medium truncate">
                       {transaction.accountName || '—'}
                     </span>
                   </div>
@@ -193,22 +237,49 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                   <p className="text-gray-500 text-xs mb-1">Code de retrait</p>
                   <div className="flex items-center gap-1.5">
                     <Key className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-white text-sm font-bold">
+                    <span className="text-gray-900 dark:text-white text-sm font-bold">
                       {transaction.withdrawCode || '—'}
                     </span>
                   </div>
                 </div>
               </>
             )}
-            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">Plateforme</p>
-              <span className="text-white text-sm">{transaction.platform?.toUpperCase()}</span>
+              <span className="text-gray-900 dark:text-white text-sm">{transaction.platform?.toUpperCase()}</span>
             </div>
-            <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2.5">
               <p className="text-gray-500 text-xs mb-1">Date</p>
-              <span className="text-white text-sm">{formatDate(transaction.createdAt)}</span>
+              <span className="text-gray-900 dark:text-white text-sm">{formatDate(transaction.createdAt)}</span>
             </div>
           </div>
+
+          {/* Statut du crédit automatique MobCash (dépôts 1xBet) */}
+          {mobcashStatus && (
+            <div className={`rounded-xl px-3 py-2.5 flex items-start gap-2.5 border
+              ${mobcashStatus.state === 'success' ? 'bg-green-500/10 border-green-500/30'
+                : mobcashStatus.state === 'error' ? 'bg-red-500/10 border-red-500/30'
+                : 'bg-amber-500/10 border-amber-500/30'}`}>
+              {mobcashStatus.state === 'loading' && <RefreshCw className="w-4 h-4 text-primary-400 animate-spin flex-shrink-0 mt-0.5" />}
+              {mobcashStatus.state === 'success' && <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />}
+              {mobcashStatus.state === 'error' && <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />}
+              {mobcashStatus.state === 'unavailable' && <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />}
+              <div>
+                <p className="text-gray-900 dark:text-white text-xs font-semibold">
+                  {mobcashStatus.state === 'loading' && 'Crédit automatique MobCash en cours...'}
+                  {mobcashStatus.state === 'success' && 'Compte 1xBet crédité automatiquement'}
+                  {mobcashStatus.state === 'error' && 'Échec du crédit automatique'}
+                  {mobcashStatus.state === 'unavailable' && 'Résultat du crédit automatique incertain'}
+                </p>
+                {mobcashStatus.message && <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">{mobcashStatus.message}</p>}
+                {mobcashStatus.state === 'unavailable' && (
+                  <p className="text-amber-400 text-xs mt-1">
+                    Vérifiez l'historique MobCash avant de créditer à nouveau ou de valider.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Bouton d'action unique : traite (accepte + termine) en un clic */}
           {(canClaim || isProcessing) && (
@@ -224,6 +295,15 @@ function OrderCard({ transaction, onProcess, onComplete, onCancel, agentName }) 
                   )
                 }
               </button>
+              {(mobcashStatus?.state === 'error' || mobcashStatus?.state === 'unavailable') && (
+                <button
+                  onClick={handleForceComplete}
+                  disabled={loading}
+                  className="btn-secondary flex-1 text-xs"
+                >
+                  Crédité à la main — Terminer
+                </button>
+              )}
               <button onClick={() => setShowCancelInput(!showCancelInput)} className="btn-danger flex-1">
                 <XCircle className="w-4 h-4" /> Annuler
               </button>
@@ -311,8 +391,8 @@ export default function AgentDashboard() {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="page-title">Mes commandes</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Bonjour <span className="text-white font-medium">{agentName}</span>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            Bonjour <span className="text-gray-900 dark:text-white font-medium">{agentName}</span>
           </p>
         </div>
 
@@ -323,8 +403,8 @@ export default function AgentDashboard() {
               <BellRing className="w-5 h-5 text-primary-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-primary-300">Activez les notifications</p>
-              <p className="text-gray-400 text-xs mt-0.5">
+              <p className="font-semibold text-sm text-primary-700 dark:text-primary-300">Activez les notifications</p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
                 Soyez alerté (son + notification) dès qu'une nouvelle commande arrive.
               </p>
             </div>
@@ -338,7 +418,7 @@ export default function AgentDashboard() {
           </div>
         )}
         {isNotificationSupported() && notifPermission === 'denied' && (
-          <div className="rounded-2xl p-3 border border-gray-700 bg-gray-800/50 flex items-center gap-3">
+          <div className="rounded-2xl p-3 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50 flex items-center gap-3">
             <BellRing className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <p className="text-gray-500 text-xs">
               Notifications bloquées par le navigateur. Autorisez-les dans les paramètres du site pour être alerté des nouvelles commandes.
@@ -350,19 +430,19 @@ export default function AgentDashboard() {
         <div className={`rounded-2xl p-4 border-2 transition-all duration-300
           ${isAvailable
             ? 'bg-green-500/10 border-green-500/30'
-            : 'bg-gray-800/50 border-gray-700'
+            : 'bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
           }`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                ${isAvailable ? 'bg-green-500/20' : 'bg-gray-700'}`}>
+                ${isAvailable ? 'bg-green-500/20' : 'bg-gray-200 dark:bg-gray-700'}`}>
                 {isAvailable
                   ? <Wifi className="w-5 h-5 text-green-400" />
                   : <WifiOff className="w-5 h-5 text-gray-500" />
                 }
               </div>
               <div>
-                <p className={`font-semibold text-sm ${isAvailable ? 'text-green-400' : 'text-gray-300'}`}>
+                <p className={`font-semibold text-sm ${isAvailable ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
                   {isAvailable ? 'Disponible pour les dépôts' : 'Indisponible'}
                 </p>
                 <p className="text-gray-500 text-xs mt-0.5">
@@ -404,7 +484,7 @@ export default function AgentDashboard() {
               </div>
               <div>
                 <p className="text-gray-500 text-xs">À traiter</p>
-                <p className="text-2xl font-bold text-white">{pending.length}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{pending.length}</p>
               </div>
             </div>
           </div>
@@ -415,14 +495,14 @@ export default function AgentDashboard() {
               </div>
               <div>
                 <p className="text-gray-500 text-xs">En cours</p>
-                <p className="text-2xl font-bold text-white">{processing.length}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{processing.length}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-900 rounded-xl p-1 border border-gray-800">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-800">
           {[
             { key: 'pending',    label: `À traiter (${pending.length})` },
             { key: 'processing', label: `En cours (${processing.length})` },
@@ -430,7 +510,7 @@ export default function AgentDashboard() {
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200
-                ${activeTab === tab.key ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                ${activeTab === tab.key ? 'bg-primary-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
               {tab.label}
             </button>
           ))}
@@ -442,10 +522,10 @@ export default function AgentDashboard() {
             {[1, 2, 3].map(i => (
               <div key={i} className="card animate-pulse">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-800 rounded-full" />
+                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-800 rounded-full" />
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-800 rounded w-32 mb-2" />
-                    <div className="h-3 bg-gray-800 rounded w-24" />
+                    <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-32 mb-2" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-24" />
                   </div>
                 </div>
               </div>
@@ -453,9 +533,9 @@ export default function AgentDashboard() {
           </div>
         ) : displayed.length === 0 ? (
           <div className="card text-center py-12">
-            <Inbox className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">Aucune commande</p>
-            <p className="text-gray-600 text-sm mt-1">
+            <Inbox className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Aucune commande</p>
+            <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">
               Les nouvelles commandes vous seront assignées automatiquement
             </p>
           </div>

@@ -89,16 +89,26 @@ export default function Navbar() {
   );
 
   const agentNav = (
-    <NavSection>
-      <NavLink to="/agent"        icon={LayoutDashboard} label="Tableau de bord" exact />
-      <NavLink to="/agent/orders" icon={ClipboardList}   label="Commandes"       />
-    </NavSection>
+    <>
+      <NavSection>
+        <NavLink to="/agent"        icon={LayoutDashboard} label="Tableau de bord" exact />
+        <NavLink to="/agent/orders" icon={ClipboardList}   label="Commandes"       />
+      </NavSection>
+      <NavSection title="Compte">
+        <NavLink to="/agent/compte" icon={Settings} label="Mon compte" />
+      </NavSection>
+    </>
   );
 
   const superAgentNav = (
-    <NavSection>
-      <NavLink to="/superagent" icon={Users} label="Mon équipe" exact />
-    </NavSection>
+    <>
+      <NavSection>
+        <NavLink to="/superagent" icon={Users} label="Mon équipe" exact />
+      </NavSection>
+      <NavSection title="Compte">
+        <NavLink to="/superagent/compte" icon={Settings} label="Mon compte" />
+      </NavSection>
+    </>
   );
 
   const adminNav = (
@@ -173,7 +183,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {role === 'admin' && (
+        {['admin', 'agent', 'superagent'].includes(role) && (
           <button
             onClick={toggleTheme}
             className="w-full flex items-center justify-between gap-2 px-3 py-2 mb-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/80 rounded-lg transition-all duration-200"
@@ -216,7 +226,7 @@ export default function Navbar() {
             <span className="text-gray-900 dark:text-white font-bold">ApollonPay</span>
           </div>
           <div className="flex items-center gap-1">
-            {role === 'admin' && (
+            {['admin', 'agent', 'superagent'].includes(role) && (
               <button
                 onClick={toggleTheme}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"

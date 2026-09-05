@@ -19,6 +19,7 @@ import { useTransactionActions } from '../../hooks/useTransactions';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCFA, formatDate, formatTxId } from '../../utils/formatters';
 import { OPERATORS, AGENT_NUMBERS } from '../../utils/constants';
+import { mobcashDeposit } from '../../utils/mobcash';
 import OperatorLogo from '../../components/OperatorLogo';
 
 export default function OrderDetail() {
@@ -34,6 +35,9 @@ export default function OrderDetail() {
   const [cancelReason, setCancelReason] = useState('');
   const [showCancel, setShowCancel] = useState(false);
   const [error, setError] = useState('');
+  // État du crédit automatique MobCash (dépôts 1xBet uniquement) — null tant
+  // qu'aucune tentative n'a eu lieu sur cette commande.
+  const [mobcashStatus, setMobcashStatus] = useState(null);
 
   useEffect(() => {
     if (!id) return;
@@ -53,8 +57,39 @@ export default function OrderDetail() {
     return () => unsubscribe();
   }, [id]);
 
+  const isAutoCreditable = transaction?.type === 'deposit' && transaction?.platform === '1xbet';
+
   const handleProcess = async () => {
     setActionLoading(true);
+    setError('');
+
+    // IMPORTANT : processOrder() fait passer la commande directement à
+    // 'completed' en un seul clic (pas d'étape 'processing' intermédiaire
+    // dans le flux actuel) — donc le crédit MobCash doit être tenté AVANT
+    // cet appel. Le cas status==='processing' ne subsiste que pour d'éventuelles
+    // commandes déjà bloquées dans cet état légataire.
+    if (isAutoCreditable) {
+      setMobcashStatus({ state: 'loading' });
+      const res = await mobcashDeposit(transaction.accountId, transaction.amount);
+
+      if (res.unavailable) {
+        // Service injoignable OU délai dépassé côté navigateur — dans les
+        // deux cas on NE SAIT PAS si le dépôt a réellement été fait côté
+        // MobCash (l'opération peut continuer côté serveur après l'abandon
+        // du fetch). On bloque la complétion automatique par sécurité :
+        // l'agent doit vérifier manuellement avant de forcer la validation.
+        setMobcashStatus({ state: 'unavailable', message: res.error });
+        setActionLoading(false);
+        return;
+      } else if (!res.ok || !res.data.success) {
+        setMobcashStatus({ state: 'error', message: res.data?.error || res.data?.reason || res.error || 'Échec du crédit automatique.' });
+        setActionLoading(false);
+        return; // pas de complétion automatique si le crédit a échoué
+      } else {
+        setMobcashStatus({ state: 'success', message: res.data.confirmationMessage || 'Compte crédité automatiquement sur 1xBet.' });
+      }
+    }
+
     const result = transaction?.status === 'processing'
       ? await completeOrder(id)
       : await processOrder(id, agentName);
@@ -90,7 +125,7 @@ export default function OrderDetail() {
     return (
       <Layout>
         <div className="card text-center py-12">
-          <p className="text-gray-400">Transaction introuvable</p>
+          <p className="text-gray-500 dark:text-gray-400">Transaction introuvable</p>
           <button onClick={() => navigate('/agent')} className="btn-primary mt-4">
             Retour
           </button>
@@ -105,7 +140,7 @@ export default function OrderDetail() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/agent')}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -165,10 +200,10 @@ export default function OrderDetail() {
               { icon: User,     label: 'Client',     value: transaction.clientName || 'Inconnu' },
               { icon: Calendar, label: 'Date',        value: formatDate(transaction.createdAt) },
             ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3">
+              <div key={label} className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3">
                 <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
-                <span className="text-white font-medium text-sm">{value}</span>
+                <span className="text-gray-600 dark:text-gray-400 text-sm w-28 flex-shrink-0">{label}</span>
+                <span className="text-gray-900 dark:text-white font-medium text-sm">{value}</span>
               </div>
             ))}
           </div>
@@ -180,10 +215,36 @@ export default function OrderDetail() {
           )}
         </div>
 
+        {/* Statut du crédit automatique MobCash (dépôts 1xBet) */}
+        {mobcashStatus && (
+          <div className={`card flex items-start gap-3
+            ${mobcashStatus.state === 'success' ? 'border-green-500/30' : mobcashStatus.state === 'error' ? 'border-red-500/30' : 'border-amber-500/30'}`}>
+            {mobcashStatus.state === 'loading' && <RefreshCw className="w-5 h-5 text-primary-400 animate-spin flex-shrink-0 mt-0.5" />}
+            {mobcashStatus.state === 'success' && <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />}
+            {mobcashStatus.state === 'error' && <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />}
+            {mobcashStatus.state === 'unavailable' && <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />}
+            <div>
+              <p className="text-gray-900 dark:text-white text-sm font-semibold">
+                {mobcashStatus.state === 'loading' && 'Crédit automatique MobCash en cours...'}
+                {mobcashStatus.state === 'success' && 'Compte 1xBet crédité automatiquement'}
+                {mobcashStatus.state === 'error' && 'Échec du crédit automatique'}
+                {mobcashStatus.state === 'unavailable' && 'Résultat du crédit automatique incertain'}
+              </p>
+              {mobcashStatus.message && <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">{mobcashStatus.message}</p>}
+              {mobcashStatus.state === 'unavailable' && (
+                <p className="text-amber-400 text-xs mt-1">
+                  L'opération a peut-être quand même abouti côté MobCash (délai dépassé côté navigateur, pas forcément côté téléphone).
+                  Vérifiez l'historique MobCash avant de créditer à nouveau ou de valider.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         {(transaction.status === 'pending' || isAwaitingConfirm || transaction.status === 'processing') && (
           <div className="card space-y-3">
-            <h3 className="text-white font-semibold">Actions</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold">Actions</h3>
             <button onClick={handleProcess} disabled={actionLoading} className="btn-primary w-full">
               {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : (
                 <>
@@ -194,6 +255,23 @@ export default function OrderDetail() {
                 </>
               )}
             </button>
+
+            {/* Repli : le crédit auto a échoué / son résultat est incertain, mais l'agent a vérifié/crédité à la main */}
+            {(mobcashStatus?.state === 'error' || mobcashStatus?.state === 'unavailable') && (
+              <button
+                onClick={async () => {
+                  setActionLoading(true);
+                  const r = transaction.status === 'processing' ? await completeOrder(id) : await processOrder(id, agentName);
+                  setActionLoading(false);
+                  if (!r.success) setError(r.error);
+                }}
+                disabled={actionLoading}
+                className="btn-secondary w-full text-sm"
+              >
+                J'ai crédité manuellement — Terminer quand même
+              </button>
+            )}
+
             <button onClick={() => setShowCancel(!showCancel)} className="btn-danger w-full">
               <XCircle className="w-4 h-4" /> Annuler la commande
             </button>

@@ -57,7 +57,7 @@ export default function AgentOrders() {
       <div className="space-y-5 animate-fade-in">
         <div>
           <h1 className="page-title">Mes commandes</h1>
-          <p className="text-gray-400 text-sm mt-1">Historique de vos transactions traitées</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Historique de vos transactions traitées</p>
         </div>
 
         {/* Stats */}
@@ -77,7 +77,7 @@ export default function AgentOrders() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-900 rounded-xl p-1 border border-gray-800">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-800">
           {[
             { key: 'completed', label: `Terminées (${completed.length})`, icon: CheckCircle },
             { key: 'cancelled', label: `Annulées (${cancelled.length})`, icon: XCircle },
@@ -86,7 +86,7 @@ export default function AgentOrders() {
               key={key}
               onClick={() => setTab(key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all
-                ${tab === key ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                ${tab === key ? 'bg-primary-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
@@ -100,20 +100,20 @@ export default function AgentOrders() {
             {[1, 2, 3].map(i => (
               <div key={i} className="card animate-pulse">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gray-800 rounded-full" />
+                  <div className="w-9 h-9 bg-gray-200 dark:bg-gray-800 rounded-full" />
                   <div className="flex-1">
-                    <div className="h-3 bg-gray-800 rounded w-28 mb-2" />
-                    <div className="h-2 bg-gray-800 rounded w-20" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-28 mb-2" />
+                    <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-20" />
                   </div>
-                  <div className="w-16 h-5 bg-gray-800 rounded" />
+                  <div className="w-16 h-5 bg-gray-200 dark:bg-gray-800 rounded" />
                 </div>
               </div>
             ))}
           </div>
         ) : displayed.length === 0 ? (
           <div className="card text-center py-12">
-            <Inbox className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">Aucune commande {tab === 'completed' ? 'terminée' : 'annulée'}</p>
+            <Inbox className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Aucune commande {tab === 'completed' ? 'terminée' : 'annulée'}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -123,7 +123,7 @@ export default function AgentOrders() {
                 ? AGENT_NUMBERS.find(o => o.id === tx.operator)
                 : OPERATORS.find(o => o.id === tx.operator);
               return (
-                <div key={tx.id} className="card hover:border-gray-700 transition-all">
+                <div key={tx.id} className="card hover:border-gray-300 dark:hover:border-gray-700 transition-all">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
                       ${isDeposit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
@@ -134,10 +134,10 @@ export default function AgentOrders() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-white text-sm font-medium">
+                        <span className="text-gray-900 dark:text-white text-sm font-medium">
                           {isDeposit ? 'Dépôt' : 'Retrait'}
                         </span>
-                        <span className="text-gray-600 text-xs">{formatTxId(tx.id)}</span>
+                        <span className="text-gray-500 dark:text-gray-600 text-xs">{formatTxId(tx.id)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {operator && (
@@ -145,14 +145,14 @@ export default function AgentOrders() {
                             <OperatorLogo operator={operator} className="h-3.5" boxed /> {operator.name}
                           </span>
                         )}
-                        <span className="text-gray-600 text-xs">•</span>
-                        <span className="text-gray-600 text-xs">{tx.platform?.toUpperCase()}</span>
-                        <span className="text-gray-600 text-xs">•</span>
-                        <span className="text-gray-600 text-xs">{formatDate(tx.updatedAt || tx.createdAt)}</span>
+                        <span className="text-gray-500 dark:text-gray-600 text-xs">•</span>
+                        <span className="text-gray-500 dark:text-gray-600 text-xs">{tx.platform?.toUpperCase()}</span>
+                        <span className="text-gray-500 dark:text-gray-600 text-xs">•</span>
+                        <span className="text-gray-500 dark:text-gray-600 text-xs">{formatDate(tx.updatedAt || tx.createdAt)}</span>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`font-bold text-sm ${isDeposit ? 'text-green-400' : 'text-red-400'}`}>
+                      <p className={`font-bold text-sm ${isDeposit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {formatCFA(tx.amount)}
                       </p>
                       <div className="mt-1">
@@ -161,7 +161,7 @@ export default function AgentOrders() {
                     </div>
                   </div>
                   {tx.note && (
-                    <p className="text-gray-600 text-xs mt-2 pl-12">Note : {tx.note}</p>
+                    <p className="text-gray-500 dark:text-gray-600 text-xs mt-2 pl-12">Note : {tx.note}</p>
                   )}
                 </div>
               );

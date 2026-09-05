@@ -19,12 +19,14 @@ import AgentLogin from './pages/agent/Login';
 import AgentDashboard from './pages/agent/Dashboard';
 import AgentOrders from './pages/agent/Orders';
 import OrderDetail from './pages/agent/OrderDetail';
+import AgentAccount from './pages/agent/Account';
 import CaissierLogin from './pages/caissier/Login';
 import CaissierDashboard from './pages/caissier/Dashboard';
 import CaissierHistory from './pages/caissier/History';
 import CaissierAccount from './pages/caissier/Account';
 import SuperAgentLogin from './pages/superagent/Login';
 import SuperAgentDashboard from './pages/superagent/Dashboard';
+import SuperAgentAccount from './pages/superagent/Account';
 import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminTransactions from './pages/admin/Transactions';
@@ -34,8 +36,8 @@ import AdminSuperAgents from './pages/admin/SuperAgents';
 import AdminAdmins from './pages/admin/Admins';
 import AdminAccount from './pages/admin/Account';
 
-// Le choix clair/sombre n'appartient qu'à l'espace admin. Les espaces
-// internes agent/superagent restent sombres en permanence. Les pages
+// Le choix clair/sombre appartient aux espaces internes (admin/agent/
+// superagent), chacun avec son propre toggle dans la sidebar. Les pages
 // client-facing (accueil, historique, compte...) sont claires en permanence.
 function ThemeSync() {
   const { theme } = useTheme();
@@ -43,9 +45,8 @@ function ThemeSync() {
 
   useEffect(() => {
     const path = location.pathname;
-    const isAdminRoute = path.startsWith('/admin');
-    const isStaffRoute = isAdminRoute || path.startsWith('/agent') || path.startsWith('/superagent');
-    const dark = isAdminRoute ? theme === 'dark' : isStaffRoute;
+    const isStaffRoute = path.startsWith('/admin') || path.startsWith('/agent') || path.startsWith('/superagent');
+    const dark = isStaffRoute && theme === 'dark';
     document.documentElement.classList.toggle('dark', dark);
   }, [theme, location.pathname]);
 
@@ -92,6 +93,11 @@ export default function App() {
             <OrderDetail />
           </ProtectedRoute>
         } />
+        <Route path="/agent/compte" element={
+          <ProtectedRoute allowedRoles={['agent']}>
+            <AgentAccount />
+          </ProtectedRoute>
+        } />
 
         {/* Caissier routes — réservé aux caissiers */}
         <Route path="/caissier" element={
@@ -114,6 +120,11 @@ export default function App() {
         <Route path="/superagent" element={
           <ProtectedRoute allowedRoles={['superagent']}>
             <SuperAgentDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/superagent/compte" element={
+          <ProtectedRoute allowedRoles={['superagent']}>
+            <SuperAgentAccount />
           </ProtectedRoute>
         } />
 

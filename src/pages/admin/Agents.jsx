@@ -50,12 +50,12 @@ function ArchiveAgentModal({ agent, onClose, onConfirm }) {
             <Archive className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-white font-semibold">Archiver l'agent</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold">Archiver l'agent</h3>
             <p className="text-gray-500 text-xs">Réversible — l'historique des transactions est conservé</p>
           </div>
         </div>
-        <p className="text-gray-400 text-sm mb-5">
-          Voulez-vous archiver <span className="text-white font-medium">{agent.name}</span> ? Il n'apparaîtra plus dans la liste active et ne recevra plus de nouvelles commandes, mais son compte et son historique restent intacts. Vous pourrez le réactiver à tout moment.
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-5">
+          Voulez-vous archiver <span className="text-gray-900 dark:text-white font-medium">{agent.name}</span> ? Il n'apparaîtra plus dans la liste active et ne recevra plus de nouvelles commandes, mais son compte et son historique restent intacts. Vous pourrez le réactiver à tout moment.
         </p>
         <div className="flex gap-2">
           <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
@@ -139,12 +139,12 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
   }
 
   return (
-    <div className="card hover:border-gray-700 transition-all">
+    <div className="card hover:border-gray-300 dark:hover:border-gray-700 transition-all">
       <div className="flex items-start gap-3">
         {/* Zone cliquable : identité + résumé */}
         <button onClick={() => setExpanded(v => !v)} className="flex-1 min-w-0 flex items-start gap-3 text-left">
           <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0
-            ${agent.active ? 'bg-primary-500/10' : 'bg-gray-800'}`}>
+            ${agent.active ? 'bg-primary-500/10' : 'bg-gray-100 dark:bg-gray-800'}`}>
             <Shield className={`w-5 h-5 ${agent.active ? 'text-primary-400' : 'text-gray-500'}`} />
           </div>
 
@@ -153,7 +153,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
               {rank <= 3 && (
                 <span className="text-sm" title={`#${rank} au classement`}>{RANK_MEDAL[rank - 1]}</span>
               )}
-              <span className="text-white font-semibold truncate">{agent.name || 'Agent'}</span>
+              <span className="text-gray-900 dark:text-white font-semibold truncate">{agent.name || 'Agent'}</span>
             </div>
 
             <div className="flex items-center gap-3 mt-1">
@@ -166,7 +166,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
 
             <p className="text-gray-500 text-xs mt-1.5">
               {stats?.deposits ?? 0} dépôts · {stats?.withdrawals ?? 0} retraits ·{' '}
-              <span className="text-primary-400 font-medium">{formatCFA(stats?.totalAmount ?? 0)}</span> traités
+              <span className="text-primary-600 dark:text-primary-400 font-medium">{formatCFA(stats?.totalAmount ?? 0)}</span> traités
             </p>
           </div>
         </button>
@@ -183,7 +183,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
               : agent.active ? <><UserX className="w-3.5 h-3.5" /> Désactiver</>
               : <><UserCheck className="w-3.5 h-3.5" /> Activer</>}
           </button>
-          <button onClick={() => setExpanded(v => !v)} className="text-gray-600 hover:text-gray-400 p-1">
+          <button onClick={() => setExpanded(v => !v)} className="text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 p-1">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
@@ -210,13 +210,13 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
 
       {/* Détails dépliés */}
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-gray-800/60 space-y-4">
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800/60 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-              <Phone className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" /> {agent.phone}
+            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 text-xs">
+              <Phone className="w-3.5 h-3.5 text-gray-400 dark:text-gray-600 flex-shrink-0" /> {agent.phone}
             </div>
-            <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-              <Clock className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 text-xs">
+              <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-600 flex-shrink-0" />
               {agent.lastLoginAt
                 ? `Connecté ${formatRelativeTime(agent.lastLoginAt).toLowerCase()}`
                 : 'Jamais connecté'}
@@ -226,7 +226,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
           {!missingOperators && (
             <div className="flex flex-wrap gap-2">
               {operatorEntries.map(([opId, number]) => (
-                <span key={opId} className="text-xs text-gray-300 bg-gray-800 px-2.5 py-1.5 rounded-lg">
+                <span key={opId} className="text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2.5 py-1.5 rounded-lg">
                   {OPERATOR_LABELS[opId]?.emoji} {number}
                   {byOperator[opId]?.count > 0 && <span className="text-gray-500"> · {byOperator[opId].count} traitées</span>}
                 </span>
@@ -235,7 +235,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
           )}
 
           {stats?.lastActivityAt && (
-            <p className="text-gray-600 text-xs">
+            <p className="text-gray-500 dark:text-gray-600 text-xs">
               Dernière commande traitée {formatRelativeTime(stats.lastActivityAt).toLowerCase()}
             </p>
           )}
@@ -284,8 +284,8 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
                     disabled={assigningPlatforms}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all disabled:opacity-50
                       ${checked
-                        ? 'bg-primary-500/15 text-primary-400 border-primary-500/30'
-                        : 'bg-gray-800 text-gray-500 border-gray-700'
+                        ? 'bg-primary-500/15 text-primary-600 dark:text-primary-400 border-primary-500/30'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300 dark:border-gray-700'
                       }`}
                   >
                     {p.label}
@@ -294,7 +294,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
               })}
             </div>
             {!agent.platforms && (
-              <p className="text-gray-600 text-xs mt-1">Toutes plateformes (aucune restriction définie).</p>
+              <p className="text-gray-500 dark:text-gray-600 text-xs mt-1">Toutes plateformes (aucune restriction définie).</p>
             )}
           </div>
 
@@ -303,7 +303,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-4">
               <button onClick={() => onEdit(agent)}
-                className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
+                className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors">
                 <Pencil className="w-3 h-3" /> Modifier numéros
               </button>
               <button onClick={() => onArchive(agent)}
@@ -312,7 +312,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
               </button>
             </div>
             {agent.createdAt && (
-              <span className="text-gray-700 text-xs">Inscrit le {formatDate(agent.createdAt)}</span>
+              <span className="text-gray-400 dark:text-gray-700 text-xs">Inscrit le {formatDate(agent.createdAt)}</span>
             )}
           </div>
         </div>
@@ -331,12 +331,12 @@ function ArchivedAgentCard({ agent, onReactivate }) {
   };
   return (
     <div className="card flex items-center gap-4 opacity-75">
-      <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
+      <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
         <Archive className="w-5 h-5 text-gray-500" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-gray-300 font-medium text-sm">{agent.name || 'Agent'}</p>
-        <p className="text-gray-600 text-xs">{agent.phone}</p>
+        <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">{agent.name || 'Agent'}</p>
+        <p className="text-gray-500 dark:text-gray-600 text-xs">{agent.phone}</p>
       </div>
       <button onClick={handleReactivate} disabled={loading}
         className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 disabled:opacity-50 flex-shrink-0">
@@ -397,7 +397,7 @@ function EditOperatorsModal({ agent, onClose }) {
       <div className="card w-full max-w-sm">
         <h3 className="section-title mb-1">Numéros Mobile Money</h3>
         <p className="text-gray-500 text-xs mb-4">
-          Agent : <span className="text-white font-medium">{agent.name}</span>
+          Agent : <span className="text-gray-900 dark:text-white font-medium">{agent.name}</span>
         </p>
 
         {success ? (
@@ -491,7 +491,7 @@ function CreateAgentModal({ onClose }) {
       <div className="card w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <h3 className="section-title mb-1">Créer un compte agent</h3>
         <p className="text-gray-500 text-xs mb-5">
-          L'agent se connecte sur <span className="text-gray-300">/agent/login</span> par numéro (ou par nom d'utilisateur si renseigné ci-dessous).
+          L'agent se connecte sur <span className="text-gray-700 dark:text-gray-300">/agent/login</span> par numéro (ou par nom d'utilisateur si renseigné ci-dessous).
         </p>
 
         <div className="space-y-4">
@@ -506,7 +506,7 @@ function CreateAgentModal({ onClose }) {
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <span className="text-gray-400 text-sm">🇧🇫 +226</span>
-                <div className="w-px h-5 bg-gray-700" />
+                <div className="w-px h-5 bg-gray-300 dark:bg-gray-700" />
               </div>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                 placeholder="70 00 00 00" className="input-field pl-24" maxLength={12} />
@@ -526,14 +526,14 @@ function CreateAgentModal({ onClose }) {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Minimum 6 caractères" className="input-field pr-12" />
               <button type="button" onClick={() => setShowPwd(!showPwd)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                 {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-3">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+            <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">
               Numéros Mobile Money de l'agent
             </p>
             <div className="space-y-3">
@@ -546,8 +546,8 @@ function CreateAgentModal({ onClose }) {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-3">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+            <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">
               Plateformes gérées
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -560,8 +560,8 @@ function CreateAgentModal({ onClose }) {
                     onClick={() => togglePlatform(p.id)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
                       ${checked
-                        ? 'bg-primary-500/15 text-primary-400 border-primary-500/30'
-                        : 'bg-gray-800 text-gray-500 border-gray-700'
+                        ? 'bg-primary-500/15 text-primary-600 dark:text-primary-400 border-primary-500/30'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300 dark:border-gray-700'
                       }`}
                   >
                     {p.label}
@@ -569,7 +569,7 @@ function CreateAgentModal({ onClose }) {
                 );
               })}
             </div>
-            <p className="text-gray-600 text-xs mt-2">Toutes cochées par défaut — décochez celles que cet agent ne gère pas.</p>
+            <p className="text-gray-500 dark:text-gray-600 text-xs mt-2">Toutes cochées par défaut — décochez celles que cet agent ne gère pas.</p>
           </div>
 
           {error && (
@@ -765,7 +765,7 @@ export default function AdminAgents() {
             </div>
             <div>
               <p className="text-gray-500 text-xs">Agents actifs</p>
-              <p className="text-white font-bold text-xl">{activeCount}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-xl">{activeCount}</p>
             </div>
           </div>
           <div className="card flex items-center gap-3">
@@ -793,20 +793,20 @@ export default function AdminAgents() {
             {[1, 2, 3].map(i => (
               <div key={i} className="card animate-pulse">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-800 rounded-full" />
+                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-full" />
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-800 rounded w-32 mb-2" />
-                    <div className="h-3 bg-gray-800 rounded w-24" />
+                    <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-32 mb-2" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-24" />
                   </div>
-                  <div className="w-24 h-8 bg-gray-800 rounded-xl" />
+                  <div className="w-24 h-8 bg-gray-200 dark:bg-gray-800 rounded-xl" />
                 </div>
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="card text-center py-12">
-            <Users className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">Aucun agent trouvé</p>
+            <Users className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Aucun agent trouvé</p>
             <button onClick={() => setShowCreate(true)} className="btn-primary mt-4">
               Créer un agent
             </button>
@@ -832,7 +832,7 @@ export default function AdminAgents() {
         {archivedAgents.length > 0 && (
           <div>
             <button onClick={() => setShowArchived(v => !v)}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors">
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
               <Archive className="w-4 h-4" />
               Agents archivés ({archivedAgents.length})
               {showArchived ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

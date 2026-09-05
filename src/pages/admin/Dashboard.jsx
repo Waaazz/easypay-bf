@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   TrendingUp,
   Users,
@@ -20,6 +20,7 @@ import {
   Legend,
 } from 'recharts';
 import Layout from '../../components/Layout';
+import TransactionDetailModal from '../../components/TransactionDetailModal';
 import { useAdminTransactions } from '../../hooks/useTransactions';
 import { formatCFA } from '../../utils/formatters';
 
@@ -31,7 +32,7 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-gray-500 text-xs font-medium">{label}</p>
-        <p className="text-gray-900 font-bold text-2xl mt-1 truncate">{value}</p>
+        <p className="text-gray-900 dark:text-white font-bold text-2xl mt-1 truncate">{value}</p>
         {sub && <p className="text-gray-400 text-xs mt-1">{sub}</p>}
       </div>
     </div>
@@ -57,6 +58,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function AdminDashboard() {
   const { transactions, loading } = useAdminTransactions();
+  const [selectedTx, setSelectedTx] = useState(null);
 
   const stats = useMemo(() => {
     const completed = transactions.filter((t) => t.status === 'completed');
@@ -183,48 +185,54 @@ export default function AdminDashboard() {
           <div className="space-y-2">
             {loading ? (
               [1,2,3].map(i => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl animate-pulse">
-                  <div className="w-8 h-8 bg-gray-700 rounded-full" />
+                <div key={i} className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse">
+                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
                   <div className="flex-1">
-                    <div className="h-3 bg-gray-700 rounded w-40 mb-1" />
-                    <div className="h-2 bg-gray-700 rounded w-24" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-1" />
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-24" />
                   </div>
                 </div>
               ))
             ) : (
               transactions.slice(0, 5).map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                <button
+                  key={tx.id}
+                  onClick={() => setSelectedTx(tx)}
+                  className="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-xl text-left hover:border-gray-300 dark:hover:border-gray-700 transition-all"
+                >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                    ${tx.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`}>
+                    ${tx.type === 'deposit' ? 'bg-green-100 dark:bg-green-500/10' : 'bg-red-100 dark:bg-red-500/10'}`}>
                     {tx.type === 'deposit'
-                      ? <ArrowDownCircle className="w-4 h-4 text-green-600" />
-                      : <ArrowUpCircle className="w-4 h-4 text-red-600" />
+                      ? <ArrowDownCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      : <ArrowUpCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-800 text-sm font-medium truncate">
+                    <p className="text-gray-800 dark:text-gray-200 text-sm font-medium truncate">
                       {tx.clientName || 'Client'} — {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
                     </p>
                     <p className="text-gray-500 text-xs font-semibold">{formatCFA(tx.amount)}</p>
                   </div>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0
-                    ${tx.status === 'completed'             ? 'text-green-700 bg-green-100'
-                    : tx.status === 'pending'               ? 'text-yellow-700 bg-yellow-100'
-                    : tx.status === 'awaiting_confirmation' ? 'text-purple-700 bg-purple-100'
-                    : tx.status === 'processing'            ? 'text-blue-700 bg-blue-100'
-                    : 'text-red-700 bg-red-100'}`}>
+                    ${tx.status === 'completed'             ? 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/10'
+                    : tx.status === 'pending'               ? 'text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/10'
+                    : tx.status === 'awaiting_confirmation' ? 'text-purple-700 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10'
+                    : tx.status === 'processing'            ? 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/10'
+                    : 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/10'}`}>
                     {tx.status === 'completed'             ? 'Terminé'
                       : tx.status === 'pending'               ? 'Attente'
                       : tx.status === 'awaiting_confirmation' ? 'Paiement envoyé'
                       : tx.status === 'processing'            ? 'En cours'
                       : 'Annulé'}
                   </span>
-                </div>
+                </button>
               ))
             )}
           </div>
         </div>
       </div>
+
+      <TransactionDetailModal transaction={selectedTx} onClose={() => setSelectedTx(null)} />
     </Layout>
   );
 }
