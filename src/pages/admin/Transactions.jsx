@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, writeBatch } from 'firebase/firestore';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -10,6 +10,7 @@ import {
   User,
   UserCog,
   Timer,
+  Trash2,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
@@ -91,6 +92,59 @@ function OperatorBadge({ operator }) {
   );
 }
 
+const RESET_KEYWORD = 'SUPPRIMER';
+
+// ─── Modal confirmation réinitialisation complète ───────────────────────────
+function ResetTransactionsModal({ onClose, onConfirm }) {
+  const [typed, setTyped] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const canReset = typed.trim() === RESET_KEYWORD;
+
+  const handleReset = async () => {
+    if (!canReset) return;
+    setLoading(true);
+    setError('');
+    try {
+      await onConfirm();
+      onClose();
+    } catch (e) {
+      setError(`Erreur : ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="card w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-gray-900 dark:text-white font-semibold">Réinitialiser les transactions</h3>
+            <p className="text-gray-500 text-xs">Irréversible — supprime toutes les transactions existantes</p>
+          </div>
+        </div>
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+          Pour confirmer, tapez <span className="text-gray-900 dark:text-white font-medium">{RESET_KEYWORD}</span> ci-dessous. Le tableau de bord et les listes reviendront à zéro.
+        </p>
+        <input type="text" value={typed} onChange={e => setTyped(e.target.value)}
+          placeholder={RESET_KEYWORD} className="input-field mb-4" autoFocus />
+        {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
+          <button onClick={handleReset} disabled={!canReset || loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Réinitialiser</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminTransactions({ initialType = null }) {
   const { transactions, loading } = useAdminTransactions();
   const [search, setSearch] = useState('');
@@ -102,7 +156,24 @@ export default function AdminTransactions({ initialType = null }) {
   const [periodFilter, setPeriodFilter] = useState('7d');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [showReset, setShowReset] = useState(false);
   const { agentsById, superAgentsById } = useStaffDirectory();
+
+  // Supprime tous les documents de la collection transactions par lots de
+  // 450 (marge sous la limite de 500 écritures par batch Firestore). Le
+  // dashboard et les listes admin lisent tous en direct (onSnapshot) cette
+  // même collection, donc les vider suffit à tout remettre à zéro — pas de
+  // compteur séparé à réinitialiser.
+  const resetAllTransactions = async () => {
+    const snap = await getDocs(collection(db, 'transactions'));
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+      const chunk = docs.slice(i, i + 450);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  };
 
   // Les liens "Transactions / Dépôts / Retraits" pointent vers ce même
   // composant avec juste un `initialType` différent ; React ne le remonte
@@ -317,6 +388,20 @@ export default function AdminTransactions({ initialType = null }) {
           </button>
         </div>
 
+        {/* Zone dangereuse */}
+        <div className="card border-red-500/20 space-y-2">
+          <h3 className="text-red-500 font-semibold text-sm flex items-center gap-2">
+            <Trash2 className="w-4 h-4" /> Zone dangereuse
+          </h3>
+          <p className="text-gray-500 text-xs">
+            Supprime définitivement toutes les transactions et remet le tableau de bord à zéro. Pratique pour repartir sur une base propre avant une mise en production.
+          </p>
+          <button onClick={() => setShowReset(true)}
+            className="flex items-center justify-center gap-2 text-sm font-medium text-red-500 hover:text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-xl py-2.5 w-full transition-colors">
+            <Trash2 className="w-4 h-4" /> Réinitialiser toutes les transactions
+          </button>
+        </div>
+
         {/* Volume summary */}
         {!loading && filtered.length > 0 && (
           <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
@@ -418,6 +503,13 @@ export default function AdminTransactions({ initialType = null }) {
           </div>
         )}
       </div>
+
+      {showReset && (
+        <ResetTransactionsModal
+          onClose={() => setShowReset(false)}
+          onConfirm={resetAllTransactions}
+        />
+      )}
     </Layout>
   );
 }
