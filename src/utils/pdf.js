@@ -1,6 +1,17 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// `Intl.NumberFormat('fr-FR')` (utilisé par formatCFA) sépare les milliers
+// avec une espace fine insécable (U+202F) — la police intégrée de jsPDF n'a
+// pas ce glyphe et le remplace par un caractère erroné ("3 333" devient
+// "3/333" ou similaire dans le PDF). On la remplace par une espace normale
+// juste avant le rendu PDF, sans toucher formatCFA (l'affichage à l'écran
+// est correct, seul jsPDF pose problème).
+const PDF_UNSAFE_SPACES = /[  ]/g;
+function pdfSafe(value) {
+  return typeof value === 'string' ? value.replace(PDF_UNSAFE_SPACES, ' ') : value;
+}
+
 /**
  * Génère et télécharge un rapport PDF tabulaire (paysage, en-tête ApollonPay,
  * pagination). Utilisé pour les rapports de transactions journaliers,
@@ -15,18 +26,18 @@ export function downloadPDFReport({ title, subtitle, headers, rows, filename }) 
 
   doc.setFontSize(11);
   doc.setTextColor(60, 60, 60);
-  doc.text(title, 14, 22);
+  doc.text(pdfSafe(title), 14, 22);
 
   if (subtitle) {
     doc.setFontSize(9);
     doc.setTextColor(130, 130, 130);
-    doc.text(subtitle, 14, 27);
+    doc.text(pdfSafe(subtitle), 14, 27);
   }
 
   autoTable(doc, {
     startY: 32,
-    head: [headers],
-    body: rows,
+    head: [headers.map(pdfSafe)],
+    body: rows.map((row) => row.map(pdfSafe)),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [49, 101, 22], textColor: 255 },
     alternateRowStyles: { fillColor: [245, 245, 245] },

@@ -139,6 +139,8 @@ export default function AdminTransactions({ initialType = null }) {
       return (
         tx.clientName?.toLowerCase().includes(q) ||
         tx.phone?.includes(q) ||
+        tx.clientPhone?.includes(q) ||
+        tx.accountId?.toLowerCase().includes(q) ||
         tx.id?.toLowerCase().includes(q)
       );
     }
@@ -234,7 +236,7 @@ export default function AdminTransactions({ initialType = null }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par client, téléphone, ID..."
+            placeholder="Rechercher par client, téléphone, ID de compte, ID transaction..."
             className="input-field pl-11"
           />
         </div>
