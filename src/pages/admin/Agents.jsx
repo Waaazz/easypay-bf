@@ -6,12 +6,13 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
   Users, UserCheck, UserX, Shield, Phone,
   RefreshCw, Search, CheckCircle, Eye, EyeOff, Pencil,
-  Archive, ArchiveRestore, AlertTriangle,
+  Archive, ArchiveRestore, AlertTriangle, Trash2,
   Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
@@ -69,6 +70,57 @@ function ArchiveAgentModal({ agent, onClose, onConfirm }) {
   );
 }
 
+// ─── Modal confirmation suppression définitive ───────────────────────────────
+// Contrairement à l'archivage (réversible), ceci supprime le compte pour de
+// bon : la fiche users/{uid} et son éventuel pointeur usernames/{username}.
+// L'historique des transactions déjà traitées n'est PAS touché (agentName y
+// est dénormalisé, il reste donc lisible même une fois l'agent supprimé) ;
+// le compte Firebase Auth sous-jacent n'est pas supprimable depuis le
+// client, mais devient inerte : sans fiche Firestore, l'agent ne peut plus
+// accéder à aucune page ni donnée réservée aux agents. Confirmation par
+// saisie du nom pour éviter un clic accidentel sur une action irréversible.
+function DeleteAgentModal({ agent, onClose, onConfirm }) {
+  const [typed, setTyped] = useState('');
+  const [loading, setLoading] = useState(false);
+  const canDelete = typed.trim() === (agent.name || '').trim() && typed.trim().length > 0;
+
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    setLoading(true);
+    await onConfirm(agent.uid, agent.username);
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="card w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-gray-900 dark:text-white font-semibold">Supprimer définitivement</h3>
+            <p className="text-gray-500 text-xs">Irréversible — le compte ne pourra pas être restauré</p>
+          </div>
+        </div>
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+          Pour confirmer, tapez le nom complet de l'agent : <span className="text-gray-900 dark:text-white font-medium">{agent.name}</span>
+        </p>
+        <input type="text" value={typed} onChange={e => setTyped(e.target.value)}
+          placeholder={agent.name} className="input-field mb-4" autoFocus />
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
+          <button onClick={handleDelete} disabled={!canDelete || loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Supprimer</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Petit indicateur de statut (point coloré + texte) ───────────────────────
 function StatusDot({ color, label }) {
   return (
@@ -85,7 +137,7 @@ function StatusDot({ color, label }) {
 // l'admin sous l'information. Les alertes ne s'affichent que si elles sont
 // réellement pertinentes (charge élevée, taux d'annulation anormal, agent
 // indisponible depuis longtemps) plutôt que d'empiler des badges en continu.
-function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank, superAgents, onAssignSuperAgent, onAssignPlatforms }) {
+function AgentCard({ agent, onToggle, onEdit, onArchive, onDelete, stats, activeLoad, rank, superAgents, onAssignSuperAgent, onAssignPlatforms }) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [assigningSuperAgent, setAssigningSuperAgent] = useState(false);
@@ -310,6 +362,10 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
                 className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors">
                 <Archive className="w-3 h-3" /> Archiver
               </button>
+              <button onClick={() => onDelete(agent)}
+                className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors">
+                <Trash2 className="w-3 h-3" /> Supprimer
+              </button>
             </div>
             {agent.createdAt && (
               <span className="text-gray-400 dark:text-gray-700 text-xs">Inscrit le {formatDate(agent.createdAt)}</span>
@@ -322,7 +378,7 @@ function AgentCard({ agent, onToggle, onEdit, onArchive, stats, activeLoad, rank
 }
 
 // ─── Carte agent archivé ──────────────────────────────────────────────────────
-function ArchivedAgentCard({ agent, onReactivate }) {
+function ArchivedAgentCard({ agent, onReactivate, onDelete }) {
   const [loading, setLoading] = useState(false);
   const handleReactivate = async () => {
     setLoading(true);
@@ -338,6 +394,10 @@ function ArchivedAgentCard({ agent, onReactivate }) {
         <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">{agent.name || 'Agent'}</p>
         <p className="text-gray-500 dark:text-gray-600 text-xs">{agent.phone}</p>
       </div>
+      <button onClick={() => onDelete(agent)}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 flex-shrink-0">
+        <Trash2 className="w-3.5 h-3.5" /> Supprimer
+      </button>
       <button onClick={handleReactivate} disabled={loading}
         className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 disabled:opacity-50 flex-shrink-0">
         {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><ArchiveRestore className="w-3.5 h-3.5" /> Réactiver</>}
@@ -610,6 +670,7 @@ export default function AdminAgents() {
   const [showCreate,    setShowCreate]    = useState(false);
   const [editingAgent,  setEditingAgent]  = useState(null);
   const [archivingAgent, setArchivingAgent] = useState(null);
+  const [deletingAgent, setDeletingAgent]   = useState(null);
   const [agentStats,    setAgentStats]    = useState({});
   const [activeLoad,    setActiveLoad]    = useState({});
   const [showArchived,  setShowArchived]  = useState(false);
@@ -711,6 +772,16 @@ export default function AdminAgents() {
       archived: false,
       updatedAt: serverTimestamp(),
     });
+  };
+
+  // Suppression définitive : retire la fiche users/{uid} (et son pointeur
+  // usernames/{username} le cas échéant). L'historique des transactions
+  // n'est pas touché — voir le commentaire sur DeleteAgentModal.
+  const deleteAgent = async (uid, username) => {
+    await deleteDoc(doc(db, 'users', uid));
+    if (username) {
+      await deleteDoc(doc(db, 'usernames', username)).catch(() => {});
+    }
   };
 
   const liveAgents = agents.filter(a => !a.archived);
@@ -818,6 +889,7 @@ export default function AdminAgents() {
                 onToggle={toggleAgent}
                 onEdit={setEditingAgent}
                 onArchive={setArchivingAgent}
+                onDelete={setDeletingAgent}
                 stats={agentStats[agent.uid]}
                 activeLoad={activeLoad[agent.uid] || 0}
                 rank={index + 1}
@@ -840,7 +912,7 @@ export default function AdminAgents() {
             {showArchived && (
               <div className="space-y-2 mt-3">
                 {archivedAgents.map(agent => (
-                  <ArchivedAgentCard key={agent.uid} agent={agent} onReactivate={reactivateAgent} />
+                  <ArchivedAgentCard key={agent.uid} agent={agent} onReactivate={reactivateAgent} onDelete={setDeletingAgent} />
                 ))}
               </div>
             )}
@@ -860,6 +932,13 @@ export default function AdminAgents() {
           agent={archivingAgent}
           onClose={() => setArchivingAgent(null)}
           onConfirm={archiveAgent}
+        />
+      )}
+      {deletingAgent && (
+        <DeleteAgentModal
+          agent={deletingAgent}
+          onClose={() => setDeletingAgent(null)}
+          onConfirm={deleteAgent}
         />
       )}
     </Layout>

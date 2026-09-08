@@ -6,12 +6,13 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
   UserCog, UserCheck, UserX, Phone,
   RefreshCw, Search, CheckCircle, Eye, EyeOff,
-  Archive, ArchiveRestore, ChevronDown, ChevronUp, Clock, Users,
+  Archive, ArchiveRestore, ChevronDown, ChevronUp, Clock, Users, Trash2,
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import UsernameAssign from '../../components/UsernameAssign';
@@ -68,8 +69,51 @@ function ArchiveSuperAgentModal({ superAgent, onClose, onConfirm }) {
   );
 }
 
+// ─── Modal confirmation suppression définitive ──────────────────────────────
+function DeleteSuperAgentModal({ superAgent, onClose, onConfirm }) {
+  const [typed, setTyped] = useState('');
+  const [loading, setLoading] = useState(false);
+  const canDelete = typed.trim() === (superAgent.name || '').trim() && typed.trim().length > 0;
+
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    setLoading(true);
+    await onConfirm(superAgent.uid, superAgent.username);
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="card w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-gray-900 dark:text-white font-semibold">Supprimer définitivement</h3>
+            <p className="text-gray-500 text-xs">Irréversible — le compte ne pourra pas être restauré</p>
+          </div>
+        </div>
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+          Pour confirmer, tapez le nom complet du superviseur : <span className="text-gray-900 dark:text-white font-medium">{superAgent.name}</span>
+        </p>
+        <input type="text" value={typed} onChange={e => setTyped(e.target.value)}
+          placeholder={superAgent.name} className="input-field mb-4" autoFocus />
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Annuler</button>
+          <button onClick={handleDelete} disabled={!canDelete || loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Supprimer</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Carte SuperAgent ─────────────────────────────────────────────────────────
-function SuperAgentCard({ superAgent, onToggle, onArchive, teamSize }) {
+function SuperAgentCard({ superAgent, onToggle, onArchive, onDelete, teamSize }) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -136,10 +180,16 @@ function SuperAgentCard({ superAgent, onToggle, onArchive, teamSize }) {
           <SessionLogsPanel uid={superAgent.uid} name={superAgent.name} />
 
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <button onClick={() => onArchive(superAgent)}
-              className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors">
-              <Archive className="w-3 h-3" /> Archiver
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => onArchive(superAgent)}
+                className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors">
+                <Archive className="w-3 h-3" /> Archiver
+              </button>
+              <button onClick={() => onDelete(superAgent)}
+                className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors">
+                <Trash2 className="w-3 h-3" /> Supprimer
+              </button>
+            </div>
             {superAgent.createdAt && (
               <span className="text-gray-400 dark:text-gray-700 text-xs">Inscrit le {formatDate(superAgent.createdAt)}</span>
             )}
@@ -151,7 +201,7 @@ function SuperAgentCard({ superAgent, onToggle, onArchive, teamSize }) {
 }
 
 // ─── Carte SuperAgent archivé ──────────────────────────────────────────────────
-function ArchivedSuperAgentCard({ superAgent, onReactivate }) {
+function ArchivedSuperAgentCard({ superAgent, onReactivate, onDelete }) {
   const [loading, setLoading] = useState(false);
   const handleReactivate = async () => {
     setLoading(true);
@@ -167,6 +217,10 @@ function ArchivedSuperAgentCard({ superAgent, onReactivate }) {
         <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">{superAgent.name || 'Superviseur'}</p>
         <p className="text-gray-500 dark:text-gray-600 text-xs">{superAgent.phone}</p>
       </div>
+      <button onClick={() => onDelete(superAgent)}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 flex-shrink-0">
+        <Trash2 className="w-3.5 h-3.5" /> Supprimer
+      </button>
       <button onClick={handleReactivate} disabled={loading}
         className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 disabled:opacity-50 flex-shrink-0">
         {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><ArchiveRestore className="w-3.5 h-3.5" /> Réactiver</>}
@@ -290,6 +344,7 @@ export default function AdminSuperAgents() {
   const [search,        setSearch]        = useState('');
   const [showCreate,    setShowCreate]    = useState(false);
   const [archivingSuperAgent, setArchivingSuperAgent] = useState(null);
+  const [deletingSuperAgent, setDeletingSuperAgent] = useState(null);
   const [showArchived,  setShowArchived]  = useState(false);
 
   useEffect(() => {
@@ -332,6 +387,13 @@ export default function AdminSuperAgents() {
       archived: false,
       updatedAt: serverTimestamp(),
     });
+  };
+
+  const deleteSuperAgent = async (uid, username) => {
+    await deleteDoc(doc(db, 'users', uid));
+    if (username) {
+      await deleteDoc(doc(db, 'usernames', username)).catch(() => {});
+    }
   };
 
   const liveSuperAgents = superAgents.filter(s => !s.archived);
@@ -429,6 +491,7 @@ export default function AdminSuperAgents() {
               <SuperAgentCard key={superAgent.uid} superAgent={superAgent}
                 onToggle={toggleSuperAgent}
                 onArchive={setArchivingSuperAgent}
+                onDelete={setDeletingSuperAgent}
                 teamSize={teamSizeBySuperAgent[superAgent.uid] || 0} />
             ))}
           </div>
@@ -446,7 +509,7 @@ export default function AdminSuperAgents() {
             {showArchived && (
               <div className="space-y-2 mt-3">
                 {archivedSuperAgents.map(superAgent => (
-                  <ArchivedSuperAgentCard key={superAgent.uid} superAgent={superAgent} onReactivate={reactivateSuperAgent} />
+                  <ArchivedSuperAgentCard key={superAgent.uid} superAgent={superAgent} onReactivate={reactivateSuperAgent} onDelete={setDeletingSuperAgent} />
                 ))}
               </div>
             )}
@@ -460,6 +523,13 @@ export default function AdminSuperAgents() {
           superAgent={archivingSuperAgent}
           onClose={() => setArchivingSuperAgent(null)}
           onConfirm={archiveSuperAgent}
+        />
+      )}
+      {deletingSuperAgent && (
+        <DeleteSuperAgentModal
+          superAgent={deletingSuperAgent}
+          onClose={() => setDeletingSuperAgent(null)}
+          onConfirm={deleteSuperAgent}
         />
       )}
     </Layout>
